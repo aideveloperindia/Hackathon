@@ -1,0 +1,209 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
+
+export default function AdminDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await api.get('/admin/dashboard');
+      setDashboardData(response.data);
+    } catch (error: any) {
+      console.error('Error fetching dashboard:', error);
+      if (error.response?.status === 401) {
+        // Token expired or invalid, will be handled by interceptor
+        return;
+      }
+      alert('Failed to load dashboard. Please try logging in again.');
+      navigate('/admin/login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartEvent = async (eventId: string) => {
+    try {
+      await api.post(`/events/admin/${eventId}/start`);
+      alert('Event started successfully!');
+      fetchDashboardData();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to start event');
+    }
+  };
+
+  const handleStopEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to stop this event?')) return;
+
+    try {
+      await api.post(`/events/admin/${eventId}/stop`);
+      alert('Event stopped successfully!');
+      fetchDashboardData();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to stop event');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Unable to Load Dashboard</h2>
+          <p className="text-gray-600 mb-6">Please try logging in again.</p>
+          <button
+            onClick={() => navigate('/admin/login')}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+              <p className="text-gray-600">Welcome, {user?.name || user?.email}</p>
+            </div>
+            <div className="flex gap-4">
+              <Link
+                to="/admin/conduct-event"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+              >
+                Conduct Event
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+
+          {dashboardData?.activeEvent && (
+            <div className="mb-6 p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Active Event</h2>
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-gray-600">Title: <span className="font-semibold">{dashboardData.activeEvent.title}</span></p>
+                  <p className="text-gray-600">Language: <span className="font-semibold">{dashboardData.activeEvent.language}</span></p>
+                  <p className="text-gray-600">Status: <span className="font-semibold">{dashboardData.activeEvent.status}</span></p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Participants: <span className="font-semibold">{dashboardData.activeEvent.participantCount}/{dashboardData.activeEvent.maxParticipants}</span></p>
+                  <p className="text-gray-600">Questions: <span className="font-semibold">{dashboardData.activeEvent.questionsCount}</span></p>
+                  <p className="text-gray-600">Started: <span className="font-semibold">{dashboardData.activeEvent.startTime ? new Date(dashboardData.activeEvent.startTime).toLocaleString() : 'N/A'}</span></p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <Link
+                  to={`/leaderboard/${dashboardData.activeEvent.id}`}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                >
+                  View Leaderboard
+                </Link>
+                <button
+                  onClick={() => handleStopEvent(dashboardData.activeEvent.id)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                >
+                  Stop Event
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!dashboardData?.activeEvent && (
+            <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg text-center">
+              <p className="text-gray-700 mb-4">No active event. Create a new event to get started.</p>
+            </div>
+          )}
+
+          {dashboardData?.leaderboard && dashboardData.leaderboard.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Current Leaderboard</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-2">Rank</th>
+                      <th className="border border-gray-300 px-4 py-2">Name</th>
+                      <th className="border border-gray-300 px-4 py-2">HT No</th>
+                      <th className="border border-gray-300 px-4 py-2">Branch/Year</th>
+                      <th className="border border-gray-300 px-4 py-2">Score</th>
+                      <th className="border border-gray-300 px-4 py-2">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardData.leaderboard.map((entry: any) => (
+                      <tr key={entry.studentId}>
+                        <td className="border border-gray-300 px-4 py-2 text-center">{entry.rank}</td>
+                        <td className="border border-gray-300 px-4 py-2">{entry.studentName}</td>
+                        <td className="border border-gray-300 px-4 py-2">{entry.htNo}</td>
+                        <td className="border border-gray-300 px-4 py-2">{entry.branch} - Y{entry.year}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-center font-semibold">{entry.totalScore}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-center">{entry.timeTaken}s</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {dashboardData?.pastEvents && dashboardData.pastEvents.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Past Events</h2>
+              <div className="space-y-2">
+                {dashboardData.pastEvents.map((event: any) => (
+                  <div key={event.id} className="p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">{event.title}</h3>
+                      <p className="text-gray-600 text-sm">{event.language} | {new Date(event.startTime).toLocaleDateString()}</p>
+                    </div>
+                    <Link
+                      to={`/leaderboard/${event.id}`}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                    >
+                      View Results
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
