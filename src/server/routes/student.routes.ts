@@ -88,14 +88,18 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       where: { studentId },
     });
 
-    // Get accepted submissions count
-    const solvedCount = await prisma.submission.count({
+    // Get accepted submissions count (distinct questions)
+    const solvedQuestions = await prisma.submission.findMany({
       where: {
         studentId,
         verdict: 'ACCEPTED',
       },
+      select: {
+        questionId: true,
+      },
       distinct: ['questionId'],
     });
+    const solvedCount = solvedQuestions.length;
 
     // Get current/last event leaderboard position
     const activeEvent = await prisma.event.findFirst({
