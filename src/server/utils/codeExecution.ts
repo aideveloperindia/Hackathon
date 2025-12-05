@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, unlink, mkdir, rmdir } from 'fs/promises';
 import { join } from 'path';
@@ -190,22 +190,58 @@ async function runTestCase(
   }
 
   try {
-    const { stdout, stderr } = await execAsync(command, {
-      input,
-      timeout: TIME_LIMIT_SECONDS * 1000,
-      cwd: workDir,
-      maxBuffer: MEMORY_LIMIT_MB * 1024 * 1024,
-    });
+    // Use spawn for input support instead of exec
+    return new Promise<{ output: string; error?: string }>((resolve, reject) => {
+      const [cmd, ...args] = command.split(' ');
+      const process = spawn(cmd, args, {
+        cwd: workDir,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
 
-    return {
-      output: stdout || '',
-      error: stderr || undefined,
-    };
+      let stdout = '';
+      let stderr = '';
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      const timeout = setTimeout(() => {
+        process.kill();
+        reject(new Error('Time limit exceeded'));
+      }, TIME_LIMIT_SECONDS * 1000);
+
+      process.on('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve({
+            output: stdout || '',
+            error: stderr || undefined,
+          });
+        } else {
+          reject(new Error(stderr || `Process exited with code ${code}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+
+      // Write input to stdin
+      if (input) {
+        process.stdin.write(input);
+        process.stdin.end();
+      }
+    });
   } catch (error: any) {
-    if (error.code === 'ETIMEDOUT' || error.signal === 'SIGTERM') {
-      throw new Error('Time limit exceeded');
+    if (error.message === 'Time limit exceeded') {
+      throw error;
     }
-    throw new Error(error.stderr || error.message);
+    throw new Error(error.message || 'Execution failed');
   }
 }
 

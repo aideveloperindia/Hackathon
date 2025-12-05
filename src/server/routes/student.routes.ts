@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../index';
 import { authenticate, requireStudent } from '../middleware/auth.middleware';
@@ -10,7 +10,7 @@ router.use(authenticate);
 router.use(requireStudent);
 
 // Get current student profile
-router.get('/me', async (req, res) => {
+router.get('/me', async (req: Request, res: Response) => {
   try {
     const student = await prisma.student.findUnique({
       where: { id: req.user!.userId },
@@ -69,7 +69,7 @@ router.post(
 );
 
 // Get student dashboard data
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', async (req: Request, res: Response) => {
   try {
     const studentId = req.user!.userId;
 
