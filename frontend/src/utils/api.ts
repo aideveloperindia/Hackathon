@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.REACT_APP_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+// In production (Vercel), use relative /api path
+// In development, use localhost
+const API_URL = import.meta.env.PROD 
+  ? '/api' 
+  : (import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || 'http://localhost:5001');
 
 const api = axios.create({
   baseURL: API_URL,

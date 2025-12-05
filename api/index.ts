@@ -4,10 +4,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables from backend directory
-dotenv.config({ path: path.join(__dirname, '../backend/.env') });
+// Load environment variables
+dotenv.config();
 
-// Import routes
+// Export prisma for routes to use
+export { prisma } from '../backend/src/index';
+
+// Import routes (they will import prisma from backend/src/index)
 import studentRoutes from '../backend/src/routes/student.routes';
 import adminRoutes from '../backend/src/routes/admin.routes';
 import authRoutes from '../backend/src/routes/auth.routes';
