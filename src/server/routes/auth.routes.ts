@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../index';
 import { hashPassword, comparePassword } from '../utils/password';
@@ -27,7 +27,7 @@ router.post(
       return true;
     }),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -178,7 +178,7 @@ router.post(
     body('htNo').trim().notEmpty().withMessage('Hall Ticket Number is required'),
     body('password').notEmpty().withMessage('Password is required'),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -252,7 +252,7 @@ router.post(
 );
 
 // Email Verification
-router.post('/student/verify-email', async (req, res) => {
+router.post('/student/verify-email', async (req: Request, res: Response) => {
   try {
     const { token } = req.body;
 
@@ -298,7 +298,7 @@ router.post('/student/verify-email', async (req, res) => {
 });
 
 // Resend verification email (for development)
-router.post('/student/resend-verification', async (req, res) => {
+router.post('/student/resend-verification', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
@@ -358,7 +358,7 @@ router.post(
       return true;
     }),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       // Check if admin registration is enabled (can be controlled via env)
       if (process.env.ALLOW_ADMIN_REGISTRATION === 'false') {
@@ -409,7 +409,7 @@ router.post(
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {

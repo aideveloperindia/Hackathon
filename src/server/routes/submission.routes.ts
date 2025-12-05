@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../index';
 import { authenticate, requireStudent } from '../middleware/auth.middleware';
@@ -17,7 +17,7 @@ router.post(
     body('code').trim().notEmpty().withMessage('Code is required'),
     body('language').isIn(['C', 'Python', 'Java', 'Other']).withMessage('Invalid language'),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {

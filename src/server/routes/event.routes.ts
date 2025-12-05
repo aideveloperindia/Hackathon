@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../index';
 import { authenticate, requireStudent, requireAdmin } from '../middleware/auth.middleware';
@@ -6,7 +6,7 @@ import { authenticate, requireStudent, requireAdmin } from '../middleware/auth.m
 const router = express.Router();
 
 // Get active event (public, but authenticated for students)
-router.get('/active', authenticate, requireStudent, async (req, res) => {
+router.get('/active', authenticate, requireStudent, async (req: Request, res: Response) => {
   try {
     const activeEvent = await prisma.event.findFirst({
       where: { status: 'ACTIVE' },
@@ -62,7 +62,7 @@ router.get('/active', authenticate, requireStudent, async (req, res) => {
 });
 
 // Join event (student only)
-router.post('/:eventId/join', authenticate, requireStudent, async (req, res) => {
+router.post('/:eventId/join', authenticate, requireStudent, async (req: Request, res: Response) => {
   try {
     const eventId = req.params.eventId;
     const studentId = req.user!.userId;
@@ -139,7 +139,7 @@ router.post('/:eventId/join', authenticate, requireStudent, async (req, res) => 
 });
 
 // Get event details with questions (for coding environment)
-router.get('/:eventId', authenticate, requireStudent, async (req, res) => {
+router.get('/:eventId', authenticate, requireStudent, async (req: Request, res: Response) => {
   try {
     const eventId = req.params.eventId;
     const studentId = req.user!.userId;
@@ -244,7 +244,7 @@ router.get('/:eventId', authenticate, requireStudent, async (req, res) => {
 });
 
 // Get leaderboard for an event
-router.get('/:eventId/leaderboard', async (req, res) => {
+router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
   try {
     const eventId = req.params.eventId;
 
@@ -322,7 +322,7 @@ router.get('/:eventId/leaderboard', async (req, res) => {
 });
 
 // Get all events (public view)
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const events = await prisma.event.findMany({
       where: {
@@ -362,7 +362,7 @@ adminRouter.post(
     body('description').optional(),
     body('maxParticipants').optional().isInt({ min: 1, max: 500 }),
   ],
-  async (req, res) => {
+  async (req: express.Request, res: express.Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -392,7 +392,7 @@ adminRouter.post(
 );
 
 // Get all events (admin)
-adminRouter.get('/', async (req, res) => {
+adminRouter.get('/', async (req: Request, res: Response) => {
   try {
     const events = await prisma.event.findMany({
       orderBy: {
@@ -416,7 +416,7 @@ adminRouter.get('/', async (req, res) => {
 });
 
 // Get event by ID (admin)
-adminRouter.get('/:eventId', async (req, res) => {
+adminRouter.get('/:eventId', async (req: Request, res: Response) => {
   try {
     const eventId = req.params.eventId;
 
@@ -446,7 +446,7 @@ adminRouter.get('/:eventId', async (req, res) => {
 });
 
 // Start event
-adminRouter.post('/:eventId/start', async (req, res) => {
+adminRouter.post('/:eventId/start', async (req: Request, res: Response) => {
   try {
     const eventId = req.params.eventId;
 
@@ -501,7 +501,7 @@ adminRouter.post('/:eventId/start', async (req, res) => {
 });
 
 // Stop event
-adminRouter.post('/:eventId/stop', async (req, res) => {
+adminRouter.post('/:eventId/stop', async (req: Request, res: Response) => {
   try {
     const eventId = req.params.eventId;
 
@@ -548,7 +548,7 @@ adminRouter.post(
     body('testCases.*.expectedOutput').notEmpty().withMessage('Test case expected output is required'),
     body('testCases.*.score').isInt({ min: 1 }).withMessage('Test case score must be a positive integer'),
   ],
-  async (req, res) => {
+  async (req: express.Request, res: express.Response) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
