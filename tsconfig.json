@@ -11,9 +11,14 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "types": ["node"]
+    "types": ["node"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
-  "include": ["api/**/*", "backend/src/**/*"],
-  "exclude": ["node_modules", "dist", "frontend"]
+  "include": ["src/server/**/*"],
+  "exclude": ["node_modules", "dist", "src/client"]
 }
+
+
 

@@ -106,3 +106,5 @@ If you encounter issues:
 3. Check MongoDB Atlas IP whitelist (allow Vercel IPs)
 4. Verify Gmail App Password is correct (no spaces)
 
+
+

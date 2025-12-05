@@ -8,14 +8,14 @@ import path from 'path';
 dotenv.config();
 
 // Export prisma for routes to use
-export { prisma } from '../backend/src/index';
+export { prisma } from '../src/server/index';
 
-// Import routes (they will import prisma from backend/src/index)
-import studentRoutes from '../backend/src/routes/student.routes';
-import adminRoutes from '../backend/src/routes/admin.routes';
-import authRoutes from '../backend/src/routes/auth.routes';
-import eventRoutes from '../backend/src/routes/event.routes';
-import submissionRoutes from '../backend/src/routes/submission.routes';
+// Import routes (they will import prisma from src/server/index)
+import studentRoutes from '../src/server/routes/student.routes';
+import adminRoutes from '../src/server/routes/admin.routes';
+import authRoutes from '../src/server/routes/auth.routes';
+import eventRoutes from '../src/server/routes/event.routes';
+import submissionRoutes from '../src/server/routes/submission.routes';
 
 const app = express();
 

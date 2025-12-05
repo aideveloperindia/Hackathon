@@ -77,3 +77,5 @@ The error `Module not found: Can't resolve 'next/dist/server/web/exports/cookies
 
 The issue is **100% a Vercel configuration problem**, not a code problem. Our code is correct - Vercel just needs the right settings.
 
+
+

@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run vercel-build",
-  "outputDirectory": "frontend/dist",
+  "outputDirectory": "dist/client",
   "installCommand": "npm install",
   "framework": null,
   "rewrites": [
@@ -17,7 +17,7 @@
   "functions": {
     "api/index.ts": {
       "runtime": "@vercel/node",
-      "includeFiles": "backend/**"
+      "includeFiles": "src/server/**"
     }
   }
 }

@@ -75,3 +75,5 @@ The `frontend/vercel.json` is configured for Vite:
 3. Ensure no Next.js dependencies in `package.json`
 4. Make sure Root Directory is set to `frontend` (not root)
 
+
+

@@ -1,16 +1,21 @@
 {
   "name": "jits-coding-platform",
   "version": "1.0.0",
-  "description": "JITS Coding Event Platform - Unified deployment",
+  "description": "JITS Coding Event Platform - Unified project",
   "private": true,
+  "main": "dist/server/index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build": "npm run build:backend && npm run build:frontend",
-    "build:backend": "cd backend && npm run build",
-    "build:frontend": "cd frontend && npm run build",
-    "vercel-build": "npm install && npm run build:backend && npm run build:frontend",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx watch src/server/index.ts",
+    "dev:client": "vite",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc",
+    "start": "node dist/server/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "tsx src/server/prisma/seed.ts",
+    "vercel-build": "npm install && npm run build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:build": "docker-compose build"
@@ -24,7 +29,12 @@
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.7",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.1",
+    "axios": "^1.6.2",
+    "@monaco-editor/react": "^4.6.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -34,9 +44,24 @@
     "@types/node": "^20.10.5",
     "@types/nodemailer": "^6.4.14",
     "@types/uuid": "^9.0.7",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.4.32",
     "prisma": "^5.7.1",
+    "tailwindcss": "^3.3.6",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8"
+  },
+  "prisma": {
+    "seed": "tsx src/server/prisma/seed.ts"
   }
 }

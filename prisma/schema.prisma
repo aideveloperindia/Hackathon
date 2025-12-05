@@ -1,0 +1,156 @@
+// Prisma schema for JITS Coding Event Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Master student list - pre-loaded official college data
+model MasterStudent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  htNo      String   @unique @map("ht_no")
+  name      String
+  branch    String
+  section   String
+  year      Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // One-to-one relationship with student account
+  student Student?
+
+  @@map("master_students")
+}
+
+// Student app accounts
+model Student {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  masterStudentId   String    @unique @map("master_student_id") @db.ObjectId
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  isEmailVerified   Boolean   @default(false) @map("is_email_verified")
+  emailVerifyToken  String?   @map("email_verify_token")
+  emailVerifyExpiry DateTime? @map("email_verify_expiry")
+  selectedLanguage  String?   @map("selected_language")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  masterStudent MasterStudent @relation(fields: [masterStudentId], references: [id], onDelete: Cascade)
+  eventParticipants EventParticipant[]
+  submissions Submission[]
+
+  @@map("students")
+}
+
+// Admin accounts
+model Admin {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  passwordHash String @map("password_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  createdEvents Event[]
+
+  @@map("admins")
+}
+
+// Events
+model Event {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  language        String
+  description     String?
+  status          EventStatus @default(DRAFT)
+  maxParticipants Int      @default(120) @map("max_participants")
+  startTime       DateTime? @map("start_time")
+  endTime         DateTime? @map("end_time")
+  createdByAdminId String   @map("created_by_admin_id") @db.ObjectId
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  createdByAdmin Admin @relation(fields: [createdByAdminId], references: [id])
+  questions Question[]
+  participants EventParticipant[]
+  submissions Submission[]
+
+  @@map("events")
+}
+
+enum EventStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+}
+
+// Questions for events
+model Question {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId     String   @map("event_id") @db.ObjectId
+  title       String
+  description String
+  sampleInput String?  @map("sample_input")
+  sampleOutput String? @map("sample_output")
+  testCases   Json     @map("test_cases") // Array of {input, expectedOutput, score}
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("questions")
+}
+
+// Event participants (students who joined)
+model EventParticipant {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId        String   @map("event_id") @db.ObjectId
+  studentId      String   @map("student_id") @db.ObjectId
+  joinedAt       DateTime @default(now()) @map("joined_at")
+  selectedLanguage String? @map("selected_language")
+  shuffledQuestionOrder Json? @map("shuffled_question_order") // Array of question IDs in shuffled order
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, studentId])
+  @@map("event_participants")
+}
+
+// Code submissions
+model Submission {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId         String    @map("event_id") @db.ObjectId
+  questionId      String    @map("question_id") @db.ObjectId
+  studentId       String    @map("student_id") @db.ObjectId
+  language        String
+  code            String
+  verdict         Verdict   @default(PENDING)
+  score           Int       @default(0)
+  timeTakenSeconds Int?     @map("time_taken_seconds")
+  executionResult Json?     @map("execution_result") // Detailed results from code execution
+  submittedAt     DateTime  @default(now()) @map("submitted_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
+}
+
+enum Verdict {
+  PENDING
+  ACCEPTED
+  PARTIAL
+  WRONG_ANSWER
+  RUNTIME_ERROR
+  COMPILATION_ERROR
+  TIME_LIMIT_EXCEEDED
+  MEMORY_LIMIT_EXCEEDED
+}
+
