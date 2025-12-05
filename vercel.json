@@ -4,7 +4,6 @@
   "outputDirectory": "dist/client",
   "installCommand": "npm install --include=dev",
   "framework": null,
-  "nodeVersion": "18.x",
   "rewrites": [
     {
       "source": "/api/(.*)",
