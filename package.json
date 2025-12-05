@@ -64,8 +64,5 @@
   },
   "prisma": {
     "seed": "tsx src/server/prisma/seed.ts"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
