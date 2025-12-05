@@ -13,19 +13,20 @@ PORT=5001
 
 JWT_SECRET=your-super-secret-jwt-key-change-in-production-min-32-chars-please-change-this-to-something-random
 
-GMAIL_USER=YOUR_GMAIL_ADDRESS@gmail.com
+GMAIL_USER=aideveloperindia@gmail.com
 
 GMAIL_APP_PASSWORD=ljzwemumicdcpsku
 
-SMTP_FROM=YOUR_GMAIL_ADDRESS@gmail.com
+SMTP_FROM=aideveloperindia@gmail.com
 
 FRONTEND_URL=https://YOUR-FRONTEND-APP.vercel.app
 ```
 
 **Important:** 
-- Replace `YOUR_GMAIL_ADDRESS@gmail.com` with your actual Gmail address
+- Gmail email: `aideveloperindia@gmail.com` ✅
+- Gmail App Password: `ljzwemumicdcpsku` ✅
 - Replace `YOUR-FRONTEND-APP.vercel.app` with your actual Vercel frontend URL after deployment
-- The `GMAIL_APP_PASSWORD` is already set (spaces removed): `ljzwemumicdcpsku`
+- Replace `YOUR-BACKEND-APP.vercel.app` with your actual Vercel backend URL after deployment
 
 ## Frontend Project Environment Variables
 
