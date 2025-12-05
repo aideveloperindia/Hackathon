@@ -21,6 +21,7 @@ frontend/.env
 credentials.txt
 default credentials.txt
 gmail_password.txt
+github_token.txt
 
 # Database
 *.db
