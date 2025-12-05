@@ -1,0 +1,56 @@
+# Vercel ignore file - exclude unnecessary files from deployment
+
+# Old directories (not used anymore)
+backend/
+frontend/
+
+# Development files
+*.md
+!README.md
+.env
+.env.local
+.env.*.local
+
+# Credentials
+credentials.txt
+default credentials.txt
+gmail_password.txt
+github_token.txt
+
+# Docker
+docker-compose.yml
+Dockerfile
+*.dockerfile
+
+# Git
+.git/
+.gitignore
+
+# Documentation (keep only essential)
+ADMIN_DASHBOARD_TROUBLESHOOTING.md
+CHANGES_SUMMARY.md
+DEPLOYMENT_CHECKLIST.md
+DEPLOYMENT_READY.md
+EMAIL_VERIFICATION_HELP.md
+EMAIL_SETUP_LOCAL.md
+ENV_VARIABLES_FOR_VERCEL.md
+FEATURES_STATUS.md
+GIT_PUSH_INSTRUCTIONS.md
+GMAIL_SETUP.md
+HT_NUMBER_PATTERNS.md
+PUSH_TO_GITHUB.md
+PUSHED_TO_GITHUB.md
+PUSH_TO_GITHUB_NOW.md
+REGISTRATION_GUIDE.md
+STUDENT_HT_NUMBERS.md
+UNIFIED_DEPLOYMENT.md
+VERCEL_CRITICAL_FIX.md
+VERCEL_DEPLOYMENT.md
+VERCEL_DEPLOYMENT_FIX.md
+VERCEL_ENV_VARIABLES_COMPLETE.md
+VERCEL_FIX.md
+VERCEL_TWO_PROJECTS_SETUP.md
+
+# Setup scripts
+setup-env.sh
+
