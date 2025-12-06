@@ -568,14 +568,21 @@ router.get('/google', (req: Request, res: Response) => {
   const responseType = 'code';
   const state = req.query.state as string || 'default';
 
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${GOOGLE_CLIENT_ID}&` +
-    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-    `response_type=${responseType}&` +
-    `scope=${encodeURIComponent(scope)}&` +
-    `state=${state}&` +
-    `access_type=offline&` +
-    `prompt=consent`;
+  // Build Google OAuth URL with proper encoding
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: responseType,
+    scope: scope,
+    state: state,
+    access_type: 'offline',
+    prompt: 'consent',
+  });
+
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+  console.log('🔗 OAuth redirect URI:', redirectUri);
+  console.log('🔗 OAuth URL:', googleAuthUrl.substring(0, 100) + '...');
 
   res.redirect(googleAuthUrl);
 });
@@ -613,13 +620,27 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       redirectUri = 'http://localhost:3001/api/auth/google/callback';
     }
 
-    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-      code,
+    // Exchange code for tokens - use URLSearchParams for proper encoding
+    const tokenParams = new URLSearchParams({
+      code: code as string,
       client_id: GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     });
+
+    console.log('🔄 Exchanging OAuth code for token...');
+    console.log('   Redirect URI:', redirectUri);
+
+    const tokenResponse = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      tokenParams.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
 
     const { access_token, id_token } = tokenResponse.data;
 
