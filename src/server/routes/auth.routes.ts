@@ -792,12 +792,15 @@ router.post('/complete-profile', authenticate, requireStudent, [
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    const trimmedHtNo = htNo.trim().toUpperCase();
+    
     // Check if HT number is already taken by another student
     const existingMasterStudent = await prisma.masterStudent.findUnique({
-      where: { htNo: htNo.toUpperCase() },
+      where: { htNo: trimmedHtNo },
       include: { student: true },
     });
 
+    // If HT number exists and is linked to a different student account, reject
     if (existingMasterStudent && existingMasterStudent.student && existingMasterStudent.student.id !== studentId) {
       return res.status(400).json({ error: 'This Hall Ticket Number is already registered to another account' });
     }
@@ -805,19 +808,49 @@ router.post('/complete-profile', authenticate, requireStudent, [
     // Update or create master student record
     let masterStudent;
     if (student.masterStudent.htNo.startsWith('OAUTH-')) {
-      // Update existing temporary master student
-      masterStudent = await prisma.masterStudent.update({
-        where: { id: student.masterStudentId },
-        data: {
-          htNo: htNo.toUpperCase(),
-          name: name.trim(),
-          year: parseInt(year),
-          section: section.toUpperCase(),
-          phoneNumber: phoneNumber.trim(),
-          branch: (branch || 'CSE').toUpperCase(),
-        },
-      });
+      // OAuth user completing profile - update temporary master student or link to existing
+      if (existingMasterStudent && !existingMasterStudent.student) {
+        // HT number exists but not linked to any student - link this student to it
+        await prisma.student.update({
+          where: { id: studentId },
+          data: {
+            masterStudentId: existingMasterStudent.id,
+          },
+        });
+        // Delete the temporary master student
+        await prisma.masterStudent.delete({
+          where: { id: student.masterStudentId },
+        });
+        // Update the existing master student with new details
+        masterStudent = await prisma.masterStudent.update({
+          where: { id: existingMasterStudent.id },
+          data: {
+            name: name.trim(),
+            year: parseInt(year),
+            section: section.toUpperCase(),
+            phoneNumber: phoneNumber.trim(),
+            branch: (branch || 'CSE').toUpperCase(),
+          },
+        });
+      } else {
+        // Update existing temporary master student with real HT number
+        masterStudent = await prisma.masterStudent.update({
+          where: { id: student.masterStudentId },
+          data: {
+            htNo: trimmedHtNo,
+            name: name.trim(),
+            year: parseInt(year),
+            section: section.toUpperCase(),
+            phoneNumber: phoneNumber.trim(),
+            branch: (branch || 'CSE').toUpperCase(),
+          },
+        });
+      }
     } else {
+      // Existing student updating profile - only update if HT number matches
+      if (student.masterStudent.htNo !== trimmedHtNo) {
+        return res.status(400).json({ error: 'Cannot change Hall Ticket Number. Please contact support.' });
+      }
       // Update existing master student
       masterStudent = await prisma.masterStudent.update({
         where: { id: student.masterStudentId },
@@ -826,6 +859,7 @@ router.post('/complete-profile', authenticate, requireStudent, [
           year: parseInt(year),
           section: section.toUpperCase(),
           phoneNumber: phoneNumber.trim(),
+          branch: (branch || 'CSE').toUpperCase(),
         },
       });
     }
