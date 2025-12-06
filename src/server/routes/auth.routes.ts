@@ -544,13 +544,15 @@ router.get('/google', (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Google OAuth not configured' });
   }
 
-  // Get the redirect URL - must match Google Cloud Console configuration
+  // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
   // Use FRONTEND_URL (fixed production URL) if set, otherwise use VERCEL_URL or localhost
   let redirectUri: string;
   
   if (process.env.FRONTEND_URL) {
     // Fixed production URL (preferred - set this in Vercel env vars)
-    redirectUri = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+    // Remove trailing slash if present
+    const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+    redirectUri = `${baseUrl}/api/auth/google/callback`;
   } else if (process.env.VERCEL_URL) {
     // Fallback to dynamic Vercel URL
     redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
@@ -563,6 +565,9 @@ router.get('/google', (req: Request, res: Response) => {
   if (req.query.redirect_uri) {
     redirectUri = req.query.redirect_uri as string;
   }
+  
+  // Ensure no trailing slash and exact format
+  redirectUri = redirectUri.replace(/\/$/, '');
 
   const scope = 'openid email profile';
   const responseType = 'code';
@@ -605,13 +610,15 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       return res.redirect(`${frontendUrl}/student/login?error=oauth_not_configured`);
     }
 
-    // Exchange code for tokens - must match the redirect URI used in the initial request
+    // Exchange code for tokens - must match the redirect URI used in the initial request EXACTLY
     // Use FRONTEND_URL (fixed production URL) if set, otherwise use VERCEL_URL or localhost
     let redirectUri: string;
     
     if (process.env.FRONTEND_URL) {
       // Fixed production URL (preferred - set this in Vercel env vars)
-      redirectUri = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+      // Remove trailing slash if present
+      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+      redirectUri = `${baseUrl}/api/auth/google/callback`;
     } else if (process.env.VERCEL_URL) {
       // Fallback to dynamic Vercel URL
       redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
@@ -619,6 +626,9 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       // Local development
       redirectUri = 'http://localhost:3001/api/auth/google/callback';
     }
+    
+    // Ensure no trailing slash and exact format
+    redirectUri = redirectUri.replace(/\/$/, '');
 
     // Exchange code for tokens - use URLSearchParams for proper encoding
     const tokenParams = new URLSearchParams({
@@ -631,16 +641,27 @@ router.get('/google/callback', async (req: Request, res: Response) => {
 
     console.log('🔄 Exchanging OAuth code for token...');
     console.log('   Redirect URI:', redirectUri);
+    console.log('   Client ID:', GOOGLE_CLIENT_ID?.substring(0, 20) + '...');
 
-    const tokenResponse = await axios.post(
-      'https://oauth2.googleapis.com/token',
-      tokenParams.toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+    let tokenResponse;
+    try {
+      tokenResponse = await axios.post(
+        'https://oauth2.googleapis.com/token',
+        tokenParams.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+    } catch (error: any) {
+      console.error('❌ Google OAuth token exchange failed:');
+      console.error('   Status:', error.response?.status);
+      console.error('   Error:', error.response?.data);
+      console.error('   Redirect URI used:', redirectUri);
+      console.error('   Client ID:', GOOGLE_CLIENT_ID?.substring(0, 20) + '...');
+      throw error;
+    }
 
     const { access_token, id_token } = tokenResponse.data;
 
