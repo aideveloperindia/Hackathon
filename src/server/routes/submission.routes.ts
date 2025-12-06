@@ -55,11 +55,11 @@ router.post(
         return res.status(403).json({ error: 'You have not joined this event' });
       }
 
-      // Check if time is up
-      if (event.startTime) {
+      // Check if time is up - only if endTime is explicitly set
+      // If endTime is not set, rely on event status (ACTIVE) to allow submissions
+      if (event.endTime) {
         const now = new Date();
-        const endTime = event.endTime || new Date(event.startTime.getTime() + 2 * 60 * 60 * 1000);
-        if (now > endTime) {
+        if (now > event.endTime) {
           return res.status(400).json({ error: 'Event time has ended' });
         }
       }

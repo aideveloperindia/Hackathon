@@ -47,7 +47,6 @@ export default function StudentDashboard() {
 
     try {
       await api.post(`/events/${activeEvent.id}/join`);
-      alert('Successfully joined the event!');
       // Refresh to update hasJoined status
       checkActiveEvent();
       fetchDashboardData();
@@ -56,6 +55,11 @@ export default function StudentDashboard() {
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to join event');
     }
+  };
+
+  const handleGoToCoding = () => {
+    if (!activeEvent) return;
+    navigate(`/coding/${activeEvent.id}`);
   };
 
   if (loading) {
@@ -89,32 +93,40 @@ export default function StudentDashboard() {
             </button>
           </div>
 
-          {activeEvent && !activeEvent.hasJoined && (
-            <div className="mb-6 p-6 bg-green-50 border border-green-200 rounded-lg">
-              <h3 className="text-xl font-bold text-green-800 mb-2">Event Active!</h3>
-              <p className="text-green-700 mb-4">
-                {activeEvent.title} - {activeEvent.language} | Participants:{' '}
-                {activeEvent.participantCount}/{activeEvent.maxParticipants}
+          {activeEvent && (
+            <div className={`mb-6 p-6 border rounded-lg ${
+              activeEvent.hasJoined 
+                ? 'bg-blue-50 border-blue-200' 
+                : 'bg-green-50 border-green-200'
+            }`}>
+              <h3 className={`text-xl font-bold mb-2 ${
+                activeEvent.hasJoined 
+                  ? 'text-blue-800' 
+                  : 'text-green-800'
+              }`}>
+                {activeEvent.hasJoined ? "You're in the event!" : 'Event Active!'}
+              </h3>
+              <p className={`mb-4 ${
+                activeEvent.hasJoined 
+                  ? 'text-blue-700' 
+                  : 'text-green-700'
+              }`}>
+                {activeEvent.title} - {activeEvent.language}
+                {!activeEvent.hasJoined && (
+                  <> | Participants: {activeEvent.participantCount}/{activeEvent.maxParticipants}</>
+                )}
               </p>
               <button
-                onClick={handleJoinEvent}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                onClick={activeEvent.hasJoined ? handleGoToCoding : handleJoinEvent}
+                type="button"
+                className={`font-semibold py-2 px-4 rounded-lg transition duration-200 cursor-pointer ${
+                  activeEvent.hasJoined
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
               >
-                Join Event
+                {activeEvent.hasJoined ? 'Go to Coding Environment' : 'Join Event'}
               </button>
-            </div>
-          )}
-
-          {activeEvent && activeEvent.hasJoined && (
-            <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="text-xl font-bold text-blue-800 mb-2">You're in the event!</h3>
-              <p className="text-blue-700 mb-4">{activeEvent.title}</p>
-              <Link
-                to={`/coding/${activeEvent.id}`}
-                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
-              >
-                Go to Coding Environment
-              </Link>
             </div>
           )}
 

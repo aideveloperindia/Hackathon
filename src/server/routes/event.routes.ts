@@ -92,7 +92,7 @@ router.post('/:eventId/join', authenticate, requireStudent, async (req: Request,
       return res.status(400).json({ error: 'This event is full. Please wait for the next batch.' });
     }
 
-    // Check if already joined
+    // Check if already joined - allow rejoining if event is still active
     const existing = await prisma.eventParticipant.findUnique({
       where: {
         eventId_studentId: {
@@ -103,7 +103,8 @@ router.post('/:eventId/join', authenticate, requireStudent, async (req: Request,
     });
 
     if (existing) {
-      return res.status(400).json({ error: 'You have already joined this event' });
+      // Allow rejoining active events - just return success
+      return res.json({ message: 'You are already in this event. Redirecting to coding environment...' });
     }
 
     // Get student's selected language
@@ -144,8 +145,16 @@ router.get('/:eventId', authenticate, requireStudent, async (req: Request, res: 
     const eventId = req.params.eventId;
     const studentId = req.user!.userId;
 
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
     // Check if student has joined
-    const participant = await prisma.eventParticipant.findUnique({
+    let participant = await prisma.eventParticipant.findUnique({
       where: {
         eventId_studentId: {
           eventId,
@@ -154,16 +163,45 @@ router.get('/:eventId', authenticate, requireStudent, async (req: Request, res: 
       },
     });
 
-    if (!participant) {
-      return res.status(403).json({ error: 'You have not joined this event' });
+    // Auto-join if event is active and student hasn't joined
+    if (!participant && event.status === 'ACTIVE') {
+      // Check participant count
+      const participantCount = await prisma.eventParticipant.count({
+        where: { eventId },
+      });
+
+      if (participantCount < event.maxParticipants) {
+        // Get student's selected language
+        const student = await prisma.student.findUnique({
+          where: { id: studentId },
+        });
+
+        // Get all questions for this event
+        const questions = await prisma.question.findMany({
+          where: { eventId },
+          select: { id: true },
+        });
+
+        // Shuffle question order for this student
+        const questionIds = questions.map(q => q.id);
+        const shuffledOrder = [...questionIds].sort(() => Math.random() - 0.5);
+
+        // Auto-join event
+        participant = await prisma.eventParticipant.create({
+          data: {
+            eventId,
+            studentId,
+            selectedLanguage: student?.selectedLanguage || null,
+            shuffledQuestionOrder: shuffledOrder,
+          },
+        });
+      } else {
+        return res.status(400).json({ error: 'This event is full. Please wait for the next batch.' });
+      }
     }
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
+    if (!participant) {
+      return res.status(403).json({ error: 'You have not joined this event and it is not active' });
     }
 
     // Get participant with shuffled question order
@@ -209,6 +247,7 @@ router.get('/:eventId', authenticate, requireStudent, async (req: Request, res: 
         description: true,
         sampleInput: true,
         sampleOutput: true,
+        timeLimitMinutes: true,
       },
     });
 
@@ -547,6 +586,7 @@ adminRouter.post(
     body('testCases.*.input').notEmpty().withMessage('Test case input is required'),
     body('testCases.*.expectedOutput').notEmpty().withMessage('Test case expected output is required'),
     body('testCases.*.score').isInt({ min: 1 }).withMessage('Test case score must be a positive integer'),
+    body('timeLimitMinutes').optional().isInt({ min: 1, max: 60 }).withMessage('Time limit must be between 1 and 60 minutes'),
   ],
   async (req: express.Request, res: express.Response) => {
     try {
@@ -556,7 +596,7 @@ adminRouter.post(
       }
 
       const eventId = req.params.eventId;
-      const { title, description, sampleInput, sampleOutput, testCases } = req.body;
+      const { title, description, sampleInput, sampleOutput, testCases, timeLimitMinutes } = req.body;
 
       // Check if event exists and is in DRAFT
       const event = await prisma.event.findUnique({
@@ -579,6 +619,7 @@ adminRouter.post(
           sampleInput: sampleInput || null,
           sampleOutput: sampleOutput || null,
           testCases: testCases,
+          timeLimitMinutes: timeLimitMinutes || 5, // Default 5 minutes if not provided
         },
       });
 

@@ -163,9 +163,53 @@ export default function AdminDashboard() {
 
           {!dashboardData?.activeEvent && (
             <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg text-center">
-              <p className="text-gray-700 mb-4">No active event. Create a new event to get started.</p>
+              <p className="text-gray-700 mb-4">No active event. Start a draft event below to get started.</p>
             </div>
           )}
+
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Draft Events {dashboardData?.draftEvents ? `(${dashboardData.draftEvents.length})` : ''}
+            </h2>
+            {dashboardData?.draftEvents && dashboardData.draftEvents.length > 0 ? (
+              <div className="space-y-3">
+                {dashboardData.draftEvents.map((event: any) => (
+                  <div key={event.id} className="p-4 bg-gray-50 rounded-lg flex justify-between items-center border border-gray-200">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 text-lg">{event.title}</h3>
+                      <p className="text-gray-600 text-sm mt-1">{event.description || 'No description'}</p>
+                      <div className="flex gap-4 mt-2 text-sm text-gray-600">
+                        <span>Language: <span className="font-semibold">{event.language}</span></span>
+                        <span>Questions: <span className="font-semibold">{event.questionsCount}</span></span>
+                        <span>Max Participants: <span className="font-semibold">{event.maxParticipants}</span></span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Start Event button clicked for:', event.id);
+                        handleStartEvent(event.id);
+                      }}
+                      disabled={event.questionsCount === 0}
+                      className={`font-semibold py-2 px-4 rounded-lg transition duration-200 cursor-pointer ${
+                        event.questionsCount === 0
+                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
+                    >
+                      {event.questionsCount === 0 ? 'No Questions' : 'Start Event'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                <p className="text-gray-600">No draft events found. Use "Conduct Event" to create a new event.</p>
+              </div>
+            )}
+          </div>
 
           {dashboardData?.leaderboard && dashboardData.leaderboard.length > 0 && (
             <div className="mb-6">

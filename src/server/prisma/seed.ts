@@ -278,6 +278,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
+        timeLimitMinutes: 5, // 5 minutes for each question
       },
     });
   }
@@ -390,6 +391,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
+        timeLimitMinutes: 5, // 5 minutes for each question
       },
     });
   }
@@ -502,18 +504,467 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
+        timeLimitMinutes: 5, // 5 minutes for each question
       },
     });
   }
 
   console.log('✅ Added 5 Java questions');
 
+  // ===== COMPUTER SCIENCE FUNDAMENTALS EVENT =====
+  let csEvent = await prisma.event.findFirst({
+    where: {
+      title: 'Computer Science Fundamentals Challenge',
+      language: 'Python',
+    },
+  });
+
+  if (!csEvent) {
+    csEvent = await prisma.event.create({
+      data: {
+        title: 'Computer Science Fundamentals Challenge',
+        language: 'Python',
+        description: 'Test your understanding of core computer science concepts: data structures, algorithms, complexity analysis, and problem-solving techniques.',
+        maxParticipants: 120,
+        createdByAdminId: admin.id,
+        status: 'DRAFT',
+      },
+    });
+  }
+
+  console.log('✅ Created Computer Science Fundamentals event');
+
+  const csQuestions = [
+    {
+      title: 'Binary Search Implementation',
+      description: 'Implement binary search to find if a target value exists in a sorted array. Return the index if found, -1 otherwise.\n\nInput: First line contains n (array size), next n lines contain sorted array elements, last line contains target\nOutput: Index of target or -1',
+      sampleInput: '5\n1\n3\n5\n7\n9\n5',
+      sampleOutput: '2',
+      testCases: [
+        { input: '5\n1\n3\n5\n7\n9\n5', expectedOutput: '2', score: 20 },
+        { input: '5\n1\n3\n5\n7\n9\n4', expectedOutput: '-1', score: 20 },
+        { input: '1\n10\n10', expectedOutput: '0', score: 20 },
+        { input: '4\n2\n4\n6\n8\n1', expectedOutput: '-1', score: 20 },
+        { input: '6\n1\n2\n3\n4\n5\n6\n3', expectedOutput: '2', score: 20 },
+      ],
+    },
+    {
+      title: 'Merge Two Sorted Arrays',
+      description: 'Given two sorted arrays, merge them into a single sorted array.\n\nInput: First line contains n1 and n2 (sizes), next n1 lines are first array, next n2 lines are second array\nOutput: Merged sorted array (one element per line)',
+      sampleInput: '3 3\n1\n3\n5\n2\n4\n6',
+      sampleOutput: '1\n2\n3\n4\n5\n6',
+      testCases: [
+        { input: '3 3\n1\n3\n5\n2\n4\n6', expectedOutput: '1\n2\n3\n4\n5\n6', score: 20 },
+        { input: '2 2\n1\n2\n3\n4', expectedOutput: '1\n2\n3\n4', score: 20 },
+        { input: '1 1\n5\n3', expectedOutput: '3\n5', score: 20 },
+        { input: '0 2\n1\n2', expectedOutput: '1\n2', score: 20 },
+        { input: '3 0\n1\n2\n3', expectedOutput: '1\n2\n3', score: 20 },
+      ],
+    },
+    {
+      title: 'Valid Parentheses Checker',
+      description: 'Check if a string containing only parentheses (), [], {} is valid. Return "Valid" if valid, "Invalid" otherwise.\n\nInput: A string of parentheses\nOutput: "Valid" or "Invalid"',
+      sampleInput: '()[]{}',
+      sampleOutput: 'Valid',
+      testCases: [
+        { input: '()[]{}', expectedOutput: 'Valid', score: 20 },
+        { input: '([{}])', expectedOutput: 'Valid', score: 20 },
+        { input: '([)]', expectedOutput: 'Invalid', score: 20 },
+        { input: '((', expectedOutput: 'Invalid', score: 20 },
+        { input: '()', expectedOutput: 'Valid', score: 20 },
+      ],
+    },
+    {
+      title: 'Two Sum Problem',
+      description: 'Given an array of integers and a target sum, find two numbers that add up to the target. Return their indices as "i j" or "No solution" if not found.\n\nInput: First line contains n and target, next n lines contain array elements\nOutput: Indices i j or "No solution"',
+      sampleInput: '4 9\n2\n7\n11\n15',
+      sampleOutput: '0 1',
+      testCases: [
+        { input: '4 9\n2\n7\n11\n15', expectedOutput: '0 1', score: 20 },
+        { input: '3 6\n3\n2\n4', expectedOutput: '1 2', score: 20 },
+        { input: '3 6\n3\n3\n3', expectedOutput: '0 1', score: 20 },
+        { input: '2 10\n5\n5', expectedOutput: '0 1', score: 20 },
+        { input: '3 10\n1\n2\n3', expectedOutput: 'No solution', score: 20 },
+      ],
+    },
+    {
+      title: 'Longest Common Prefix',
+      description: 'Find the longest common prefix string among an array of strings. If no common prefix, return empty string.\n\nInput: First line contains n, next n lines contain strings\nOutput: Longest common prefix',
+      sampleInput: '3\nflower\nflow\nflight',
+      sampleOutput: 'fl',
+      testCases: [
+        { input: '3\nflower\nflow\nflight', expectedOutput: 'fl', score: 20 },
+        { input: '3\ndog\nracecar\ncar', expectedOutput: '', score: 20 },
+        { input: '2\ninterspecies\ninterstellar', expectedOutput: 'inters', score: 20 },
+        { input: '1\nhello', expectedOutput: 'hello', score: 20 },
+        { input: '2\nprefix\npre', expectedOutput: 'pre', score: 20 },
+      ],
+    },
+  ];
+
+  await prisma.question.deleteMany({
+    where: { eventId: csEvent.id },
+  });
+
+  for (const q of csQuestions) {
+    await prisma.question.create({
+      data: {
+        eventId: csEvent.id,
+        title: q.title,
+        description: q.description,
+        sampleInput: q.sampleInput,
+        sampleOutput: q.sampleOutput,
+        testCases: q.testCases,
+        timeLimitMinutes: 5,
+      },
+    });
+  }
+
+  console.log('✅ Added 5 Computer Science Fundamentals questions');
+
+  // ===== SOFTWARE APPLICATIONS EVENT =====
+  let appEvent = await prisma.event.findFirst({
+    where: {
+      title: 'Software Applications Development Challenge',
+      language: 'Python',
+    },
+  });
+
+  if (!appEvent) {
+    appEvent = await prisma.event.create({
+      data: {
+        title: 'Software Applications Development Challenge',
+        language: 'Python',
+        description: 'Build practical software solutions: file processing, data manipulation, API-like functions, and real-world application logic.',
+        maxParticipants: 120,
+        createdByAdminId: admin.id,
+        status: 'DRAFT',
+      },
+    });
+  }
+
+  console.log('✅ Created Software Applications event');
+
+  const appQuestions = [
+    {
+      title: 'CSV Data Parser',
+      description: 'Parse a CSV-like string and calculate the average of the second column. Input format: "name,value" per line.\n\nInput: First line contains n, next n lines contain "name,value" pairs\nOutput: Average of values (rounded to 2 decimal places)',
+      sampleInput: '3\nAlice,85\nBob,90\nCharlie,75',
+      sampleOutput: '83.33',
+      testCases: [
+        { input: '3\nAlice,85\nBob,90\nCharlie,75', expectedOutput: '83.33', score: 20 },
+        { input: '2\nItem1,100\nItem2,200', expectedOutput: '150.00', score: 20 },
+        { input: '1\nTest,50', expectedOutput: '50.00', score: 20 },
+        { input: '4\nA,10\nB,20\nC,30\nD,40', expectedOutput: '25.00', score: 20 },
+        { input: '5\nX,5\nY,10\nZ,15\nW,20\nV,25', expectedOutput: '15.00', score: 20 },
+      ],
+    },
+    {
+      title: 'Password Validator',
+      description: 'Validate a password: at least 8 chars, contains uppercase, lowercase, digit, and special char (!@#$%^&*). Return "Valid" or "Invalid".\n\nInput: A password string\nOutput: "Valid" or "Invalid"',
+      sampleInput: 'Password123!',
+      sampleOutput: 'Valid',
+      testCases: [
+        { input: 'Password123!', expectedOutput: 'Valid', score: 20 },
+        { input: 'weak', expectedOutput: 'Invalid', score: 20 },
+        { input: 'NoSpecial1', expectedOutput: 'Invalid', score: 20 },
+        { input: 'Strong@Pass1', expectedOutput: 'Valid', score: 20 },
+        { input: 'short1!', expectedOutput: 'Invalid', score: 20 },
+      ],
+    },
+    {
+      title: 'URL Path Extractor',
+      description: 'Extract the path from a URL. Given a URL, return the path part (everything after domain).\n\nInput: A URL string\nOutput: Path part of URL',
+      sampleInput: 'https://example.com/api/users/123',
+      sampleOutput: '/api/users/123',
+      testCases: [
+        { input: 'https://example.com/api/users/123', expectedOutput: '/api/users/123', score: 20 },
+        { input: 'http://test.com/home', expectedOutput: '/home', score: 20 },
+        { input: 'https://site.com/', expectedOutput: '/', score: 20 },
+        { input: 'http://domain.com/path/to/resource', expectedOutput: '/path/to/resource', score: 20 },
+        { input: 'https://api.example.com/v1/data', expectedOutput: '/v1/data', score: 20 },
+      ],
+    },
+    {
+      title: 'Email Domain Counter',
+      description: 'Count how many emails belong to each domain. Return domain:count pairs, one per line, sorted by domain.\n\nInput: First line contains n, next n lines contain email addresses\nOutput: Domain:count pairs (sorted)',
+      sampleInput: '3\nalice@gmail.com\nbob@yahoo.com\ncharlie@gmail.com',
+      sampleOutput: 'gmail.com:2\nyahoo.com:1',
+      testCases: [
+        { input: '3\nalice@gmail.com\nbob@yahoo.com\ncharlie@gmail.com', expectedOutput: 'gmail.com:2\nyahoo.com:1', score: 20 },
+        { input: '2\ntest@example.com\nuser@example.com', expectedOutput: 'example.com:2', score: 20 },
+        { input: '1\nadmin@test.com', expectedOutput: 'test.com:1', score: 20 },
+        { input: '4\na@x.com\nb@y.com\nc@x.com\nd@z.com', expectedOutput: 'x.com:2\ny.com:1\nz.com:1', score: 20 },
+        { input: '3\nuser1@domain.com\nuser2@domain.com\nuser3@domain.com', expectedOutput: 'domain.com:3', score: 20 },
+      ],
+    },
+    {
+      title: 'JSON Key-Value Extractor',
+      description: 'Extract a specific key value from a simple JSON-like string. Format: {"key":"value"}.\n\nInput: First line contains JSON string, second line contains key to extract\nOutput: Value for the key or "Not found"',
+      sampleInput: '{"name":"John","age":"30","city":"NYC"}\nage',
+      sampleOutput: '30',
+      testCases: [
+        { input: '{"name":"John","age":"30","city":"NYC"}\nage', expectedOutput: '30', score: 20 },
+        { input: '{"id":"123","status":"active"}\nid', expectedOutput: '123', score: 20 },
+        { input: '{"key":"value"}\nmissing', expectedOutput: 'Not found', score: 20 },
+        { input: '{"a":"1","b":"2","c":"3"}\nb', expectedOutput: '2', score: 20 },
+        { input: '{"x":"hello"}\nx', expectedOutput: 'hello', score: 20 },
+      ],
+    },
+  ];
+
+  await prisma.question.deleteMany({
+    where: { eventId: appEvent.id },
+  });
+
+  for (const q of appQuestions) {
+    await prisma.question.create({
+      data: {
+        eventId: appEvent.id,
+        title: q.title,
+        description: q.description,
+        sampleInput: q.sampleInput,
+        sampleOutput: q.sampleOutput,
+        testCases: q.testCases,
+        timeLimitMinutes: 5,
+      },
+    });
+  }
+
+  console.log('✅ Added 5 Software Applications questions');
+
+  // ===== ARTIFICIAL INTELLIGENCE EVENT =====
+  let aiEvent = await prisma.event.findFirst({
+    where: {
+      title: 'Artificial Intelligence Challenge',
+      language: 'Python',
+    },
+  });
+
+  if (!aiEvent) {
+    aiEvent = await prisma.event.create({
+      data: {
+        title: 'Artificial Intelligence Challenge',
+        language: 'Python',
+        description: 'Solve AI problems: search algorithms, game theory, constraint satisfaction, and intelligent decision-making systems.',
+        maxParticipants: 120,
+        createdByAdminId: admin.id,
+        status: 'DRAFT',
+      },
+    });
+  }
+
+  console.log('✅ Created Artificial Intelligence event');
+
+  const aiQuestions = [
+    {
+      title: 'BFS Path Finder',
+      description: 'Find shortest path using BFS. Given graph edges and start/end nodes, return path length or -1 if no path.\n\nInput: First line: n nodes, m edges. Next m lines: edges (u v). Last line: start end\nOutput: Shortest path length',
+      sampleInput: '4 4\n0 1\n1 2\n2 3\n0 3\n0 3',
+      sampleOutput: '1',
+      testCases: [
+        { input: '4 4\n0 1\n1 2\n2 3\n0 3\n0 3', expectedOutput: '1', score: 20 },
+        { input: '3 2\n0 1\n1 2\n0 2', expectedOutput: '2', score: 20 },
+        { input: '2 1\n0 1\n0 1', expectedOutput: '1', score: 20 },
+        { input: '3 1\n0 1\n0 2', expectedOutput: '-1', score: 20 },
+        { input: '5 6\n0 1\n1 2\n2 3\n3 4\n0 4\n1 3\n0 4', expectedOutput: '1', score: 20 },
+      ],
+    },
+    {
+      title: 'Tic-Tac-Toe Winner Checker',
+      description: 'Check if there is a winner in a Tic-Tac-Toe board. Return "X", "O", "Draw", or "Continue".\n\nInput: 3 lines, each with 3 characters (X, O, or .)\nOutput: Winner or game status',
+      sampleInput: 'X X O\nO X X\nO O X',
+      sampleOutput: 'X',
+      testCases: [
+        { input: 'X X O\nO X X\nO O X', expectedOutput: 'X', score: 20 },
+        { input: 'X O X\nO O X\nX O O', expectedOutput: 'O', score: 20 },
+        { input: 'X O X\nO X O\nO X O', expectedOutput: 'Draw', score: 20 },
+        { input: 'X X X\nO O .\n. . .', expectedOutput: 'X', score: 20 },
+        { input: 'X O .\nX O .\nX . .', expectedOutput: 'X', score: 20 },
+      ],
+    },
+    {
+      title: 'N-Queens Validator',
+      description: 'Check if n queens can be placed on n×n board without attacking each other. Given positions, return "Valid" or "Invalid".\n\nInput: First line: n, next n lines: row col positions\nOutput: "Valid" or "Invalid"',
+      sampleInput: '4\n0 1\n1 3\n2 0\n3 2',
+      sampleOutput: 'Valid',
+      testCases: [
+        { input: '4\n0 1\n1 3\n2 0\n3 2', expectedOutput: 'Valid', score: 20 },
+        { input: '4\n0 0\n1 1\n2 2\n3 3', expectedOutput: 'Invalid', score: 20 },
+        { input: '2\n0 0\n1 1', expectedOutput: 'Invalid', score: 20 },
+        { input: '1\n0 0', expectedOutput: 'Valid', score: 20 },
+        { input: '3\n0 0\n1 2\n2 1', expectedOutput: 'Valid', score: 20 },
+      ],
+    },
+    {
+      title: 'A* Heuristic Calculator',
+      description: 'Calculate A* f-score: f(n) = g(n) + h(n). Given current cost g and heuristic h, return f.\n\nInput: Two integers: g (actual cost) and h (heuristic)\nOutput: f-score (g + h)',
+      sampleInput: '5 3',
+      sampleOutput: '8',
+      testCases: [
+        { input: '5 3', expectedOutput: '8', score: 20 },
+        { input: '10 5', expectedOutput: '15', score: 20 },
+        { input: '0 0', expectedOutput: '0', score: 20 },
+        { input: '7 2', expectedOutput: '9', score: 20 },
+        { input: '15 10', expectedOutput: '25', score: 20 },
+      ],
+    },
+    {
+      title: 'Minimax Score Evaluator',
+      description: 'Evaluate game state scores. Given scores for terminal states, return the maximum score (maximizing player perspective).\n\nInput: First line: n, next n lines: scores\nOutput: Maximum score',
+      sampleInput: '5\n3\n7\n2\n9\n1',
+      sampleOutput: '9',
+      testCases: [
+        { input: '5\n3\n7\n2\n9\n1', expectedOutput: '9', score: 20 },
+        { input: '3\n-5\n-2\n-10', expectedOutput: '-2', score: 20 },
+        { input: '1\n42', expectedOutput: '42', score: 20 },
+        { input: '4\n10\n20\n30\n40', expectedOutput: '40', score: 20 },
+        { input: '6\n1\n1\n1\n1\n1\n1', expectedOutput: '1', score: 20 },
+      ],
+    },
+  ];
+
+  await prisma.question.deleteMany({
+    where: { eventId: aiEvent.id },
+  });
+
+  for (const q of aiQuestions) {
+    await prisma.question.create({
+      data: {
+        eventId: aiEvent.id,
+        title: q.title,
+        description: q.description,
+        sampleInput: q.sampleInput,
+        sampleOutput: q.sampleOutput,
+        testCases: q.testCases,
+        timeLimitMinutes: 5,
+      },
+    });
+  }
+
+  console.log('✅ Added 5 Artificial Intelligence questions');
+
+  // ===== MACHINE LEARNING EVENT =====
+  let mlEvent = await prisma.event.findFirst({
+    where: {
+      title: 'Machine Learning Challenge',
+      language: 'Python',
+    },
+  });
+
+  if (!mlEvent) {
+    mlEvent = await prisma.event.create({
+      data: {
+        title: 'Machine Learning Challenge',
+        language: 'Python',
+        description: 'Implement ML algorithms from scratch: data preprocessing, model evaluation, feature engineering, and algorithm implementation.',
+        maxParticipants: 120,
+        createdByAdminId: admin.id,
+        status: 'DRAFT',
+      },
+    });
+  }
+
+  console.log('✅ Created Machine Learning event');
+
+  const mlQuestions = [
+    {
+      title: 'Mean Squared Error Calculator',
+      description: 'Calculate MSE between predicted and actual values. MSE = mean((predicted - actual)²).\n\nInput: First line: n, next n lines: predicted actual pairs\nOutput: MSE (rounded to 2 decimal places)',
+      sampleInput: '3\n2.5 3.0\n1.8 2.0\n4.2 4.0',
+      sampleOutput: '0.08',
+      testCases: [
+        { input: '3\n2.5 3.0\n1.8 2.0\n4.2 4.0', expectedOutput: '0.08', score: 20 },
+        { input: '2\n1.0 1.0\n2.0 2.0', expectedOutput: '0.00', score: 20 },
+        { input: '3\n0.0 1.0\n0.0 1.0\n0.0 1.0', expectedOutput: '1.00', score: 20 },
+        { input: '4\n1.0 2.0\n2.0 1.0\n3.0 3.0\n4.0 4.0', expectedOutput: '0.50', score: 20 },
+        { input: '2\n5.0 5.5\n6.0 6.5', expectedOutput: '0.25', score: 20 },
+      ],
+    },
+    {
+      title: 'Data Normalization (Min-Max)',
+      description: 'Normalize data using min-max scaling: (x - min) / (max - min).\n\nInput: First line: n, next n lines: values\nOutput: Normalized values (one per line, rounded to 2 decimals)',
+      sampleInput: '3\n10\n20\n30',
+      sampleOutput: '0.00\n0.50\n1.00',
+      testCases: [
+        { input: '3\n10\n20\n30', expectedOutput: '0.00\n0.50\n1.00', score: 20 },
+        { input: '2\n5\n15', expectedOutput: '0.00\n1.00', score: 20 },
+        { input: '4\n0\n25\n50\n100', expectedOutput: '0.00\n0.25\n0.50\n1.00', score: 20 },
+        { input: '3\n1\n1\n1', expectedOutput: '0.00\n0.00\n0.00', score: 20 },
+        { input: '5\n10\n20\n30\n40\n50', expectedOutput: '0.00\n0.25\n0.50\n0.75\n1.00', score: 20 },
+      ],
+    },
+    {
+      title: 'K-Means Distance Calculator',
+      description: 'Calculate Euclidean distance from a point to cluster centers. Return index of nearest center (0-indexed).\n\nInput: First line: point (x y), next line: k, next k lines: centers (x y)\nOutput: Index of nearest center',
+      sampleInput: '2 3\n3\n1 1\n5 5\n3 3',
+      sampleOutput: '2',
+      testCases: [
+        { input: '2 3\n3\n1 1\n5 5\n3 3', expectedOutput: '2', score: 20 },
+        { input: '0 0\n2\n1 1\n-1 -1', expectedOutput: '1', score: 20 },
+        { input: '5 5\n2\n0 0\n10 10', expectedOutput: '0', score: 20 },
+        { input: '3 3\n1\n3 3', expectedOutput: '0', score: 20 },
+        { input: '1 1\n3\n0 0\n2 2\n1 1', expectedOutput: '2', score: 20 },
+      ],
+    },
+    {
+      title: 'Accuracy Score Calculator',
+      description: 'Calculate classification accuracy: (correct predictions / total) * 100.\n\nInput: First line: n, next n lines: predicted actual pairs\nOutput: Accuracy percentage (rounded to 2 decimals)',
+      sampleInput: '5\n1 1\n0 0\n1 1\n0 1\n1 0',
+      sampleOutput: '60.00',
+      testCases: [
+        { input: '5\n1 1\n0 0\n1 1\n0 1\n1 0', expectedOutput: '60.00', score: 20 },
+        { input: '3\n1 1\n1 1\n1 1', expectedOutput: '100.00', score: 20 },
+        { input: '4\n0 0\n0 1\n1 0\n1 1', expectedOutput: '50.00', score: 20 },
+        { input: '2\n1 0\n0 1', expectedOutput: '0.00', score: 20 },
+        { input: '6\n1 1\n0 0\n1 1\n0 0\n1 1\n0 0', expectedOutput: '100.00', score: 20 },
+      ],
+    },
+    {
+      title: 'Feature Correlation Calculator',
+      description: 'Calculate correlation coefficient between two features. Use Pearson correlation formula.\n\nInput: First line: n, next n lines: x y pairs\nOutput: Correlation coefficient (rounded to 2 decimals)',
+      sampleInput: '5\n1 2\n2 4\n3 6\n4 8\n5 10',
+      sampleOutput: '1.00',
+      testCases: [
+        { input: '5\n1 2\n2 4\n3 6\n4 8\n5 10', expectedOutput: '1.00', score: 20 },
+        { input: '3\n1 1\n2 2\n3 3', expectedOutput: '1.00', score: 20 },
+        { input: '4\n1 3\n2 2\n3 1\n4 0', expectedOutput: '-1.00', score: 20 },
+        { input: '3\n1 1\n2 3\n3 2', expectedOutput: '0.50', score: 20 },
+        { input: '5\n1 5\n2 4\n3 3\n4 2\n5 1', expectedOutput: '-1.00', score: 20 },
+      ],
+    },
+  ];
+
+  await prisma.question.deleteMany({
+    where: { eventId: mlEvent.id },
+  });
+
+  for (const q of mlQuestions) {
+    await prisma.question.create({
+      data: {
+        eventId: mlEvent.id,
+        title: q.title,
+        description: q.description,
+        sampleInput: q.sampleInput,
+        sampleOutput: q.sampleOutput,
+        testCases: q.testCases,
+        timeLimitMinutes: 5,
+      },
+    });
+  }
+
+  console.log('✅ Added 5 Machine Learning questions');
+
   console.log('✨ Seeding completed!');
   console.log('\n📊 Summary:');
   console.log('   - Python Event: 5 questions');
   console.log('   - C Event: 5 questions');
   console.log('   - Java Event: 5 questions');
-  console.log('   - Total: 15 questions across 3 events');
+  console.log('   - Computer Science Fundamentals: 5 questions');
+  console.log('   - Software Applications: 5 questions');
+  console.log('   - Artificial Intelligence: 5 questions');
+  console.log('   - Machine Learning: 5 questions');
+  console.log('   - Total: 35 questions across 7 events');
 }
 
 main()

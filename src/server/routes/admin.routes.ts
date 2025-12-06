@@ -48,6 +48,23 @@ router.get('/dashboard', async (req, res) => {
       },
     });
 
+    // Get all draft events
+    const draftEvents = await prisma.event.findMany({
+      where: {
+        status: 'DRAFT',
+      },
+      include: {
+        _count: {
+          select: {
+            questions: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
     // Get all past events
     const pastEvents = await prisma.event.findMany({
       where: {
@@ -103,7 +120,7 @@ router.get('/dashboard', async (req, res) => {
       }));
     }
 
-    res.json({
+    const responseData = {
       activeEvent: activeEvent
         ? {
             id: activeEvent.id,
@@ -117,6 +134,15 @@ router.get('/dashboard', async (req, res) => {
           }
         : null,
       leaderboard,
+      draftEvents: draftEvents.map((e) => ({
+        id: e.id,
+        title: e.title,
+        language: e.language,
+        description: e.description,
+        questionsCount: e._count.questions,
+        maxParticipants: e.maxParticipants,
+        createdAt: e.createdAt,
+      })),
       pastEvents: pastEvents.map((e) => ({
         id: e.id,
         title: e.title,
@@ -125,7 +151,15 @@ router.get('/dashboard', async (req, res) => {
         endTime: e.endTime,
         createdAt: e.createdAt,
       })),
+    };
+
+    console.log('Admin dashboard response:', {
+      activeEvent: responseData.activeEvent ? 'Yes' : 'No',
+      draftEventsCount: responseData.draftEvents.length,
+      pastEventsCount: responseData.pastEvents.length,
     });
+
+    res.json(responseData);
   } catch (error: any) {
     console.error('Admin dashboard error:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard data' });

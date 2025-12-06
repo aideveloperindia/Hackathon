@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import api from '../utils/api';
@@ -11,37 +11,175 @@ export default function CodingEnvironment() {
   const [code, setCode] = useState<string>('');
   const [language, setLanguage] = useState<string>('python');
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [submissionResult, setSubmissionResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
+  const autoSubmitRef = useRef(false);
 
+  // Define moveToNextQuestion first to avoid circular dependency
+  const moveToNextQuestion = useCallback(() => {
+    if (!event || !selectedQuestion) return;
+    
+    const currentIndex = event.questions.findIndex((q: any) => q.id === selectedQuestion.id);
+    if (currentIndex < event.questions.length - 1) {
+      const nextQuestion = event.questions[currentIndex + 1];
+      setSelectedQuestion(nextQuestion);
+      setCode('');
+      setSubmissionResult(null);
+      setAutoSubmitted(false);
+      autoSubmitRef.current = false;
+      
+      // Start timer for next question
+      const startTime = Date.now();
+      setQuestionStartTime(startTime);
+      localStorage.setItem(`question_start_${eventId}_${nextQuestion.id}`, startTime.toString());
+      
+      // Set remaining time for next question
+      if (nextQuestion.timeLimitMinutes) {
+        const timeLimitSeconds = nextQuestion.timeLimitMinutes * 60;
+        setRemainingTime(timeLimitSeconds);
+      }
+    } else {
+      // No more questions
+      alert('All questions completed! Redirecting to dashboard...');
+      navigate('/student/dashboard');
+    }
+  }, [event, selectedQuestion, eventId, navigate]);
+
+  const handleAutoSubmit = useCallback(async () => {
+    if (autoSubmitRef.current || !selectedQuestion) return;
+    
+    // Save code even if empty
+    if (selectedQuestion) {
+      localStorage.setItem(`code_${eventId}_${selectedQuestion.id}`, code);
+    }
+    
+    // If no code, just move to next question
+    if (!code.trim()) {
+      setTimeout(() => {
+        moveToNextQuestion();
+      }, 1000);
+      return;
+    }
+    
+    autoSubmitRef.current = true;
+    setAutoSubmitted(true);
+    setSubmitting(true);
+    
+    try {
+      const response = await api.post(`/submissions/events/${eventId}/questions/${selectedQuestion.id}`, {
+        code,
+        language: event?.language || 'python',
+      });
+
+      setSubmissionResult(response.data.submission);
+      
+      // Move to next question after 2 seconds
+      setTimeout(() => {
+        moveToNextQuestion();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Auto-submit error:', error);
+      // Still move to next question even if submission fails
+      setTimeout(() => {
+        moveToNextQuestion();
+      }, 2000);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [selectedQuestion, code, eventId, event?.language, moveToNextQuestion]);
+
+  const fetchEventData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get(`/events/${eventId}`);
+      const eventData = response.data.event;
+      
+      if (!eventData) {
+        alert('Event not found');
+        navigate('/student/dashboard');
+        return;
+      }
+      
+      setEvent(eventData);
+      
+      if (eventData.questions && eventData.questions.length > 0) {
+        const firstQuestion = eventData.questions[0];
+        setSelectedQuestion(firstQuestion);
+        setLanguage(eventData.language.toLowerCase());
+        
+        // Load saved code for first question if exists
+        const savedCode = localStorage.getItem(`code_${eventId}_${firstQuestion.id}`);
+        if (savedCode) {
+          setCode(savedCode);
+        }
+        
+        // Start timer for first question
+        const storedStartTime = localStorage.getItem(`question_start_${eventId}_${firstQuestion.id}`);
+        if (storedStartTime) {
+          setQuestionStartTime(parseInt(storedStartTime));
+        } else {
+          const startTime = Date.now();
+          setQuestionStartTime(startTime);
+          localStorage.setItem(`question_start_${eventId}_${firstQuestion.id}`, startTime.toString());
+        }
+        // Initialize remaining time
+        if (firstQuestion.timeLimitMinutes) {
+          const elapsed = storedStartTime ? Math.floor((Date.now() - parseInt(storedStartTime)) / 1000) : 0;
+          const timeLimitSeconds = firstQuestion.timeLimitMinutes * 60;
+          setRemainingTime(Math.max(0, timeLimitSeconds - elapsed));
+        }
+      } else {
+        alert('This event has no questions yet. Please contact the administrator.');
+        navigate('/student/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Error fetching event:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to load event';
+      alert(errorMessage);
+      navigate('/student/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, [eventId, navigate]);
+
+  // Fetch event data on mount
   useEffect(() => {
     fetchEventData();
+  }, [fetchEventData]);
+
+  // Auto-save code periodically
+  useEffect(() => {
+    if (selectedQuestion && code.trim()) {
+      const saveInterval = setInterval(() => {
+        localStorage.setItem(`code_${eventId}_${selectedQuestion.id}`, code);
+      }, 30000); // Auto-save every 30 seconds
+
+      return () => clearInterval(saveInterval);
+    }
+  }, [code, selectedQuestion, eventId]);
+
+  // Timer for question time limit
+  useEffect(() => {
     const interval = setInterval(() => {
-      if (remainingTime !== null && remainingTime > 0) {
-        setRemainingTime(remainingTime - 1);
-      } else if (remainingTime === 0) {
-        alert('Time is up!');
+      if (questionStartTime && selectedQuestion?.timeLimitMinutes) {
+        const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
+        const timeLimitSeconds = selectedQuestion.timeLimitMinutes * 60;
+        const remaining = Math.max(0, timeLimitSeconds - elapsed);
+        setRemainingTime(remaining);
+        
+        // Auto-submit when time expires (even if code is empty)
+        if (remaining === 0 && !autoSubmitRef.current) {
+          handleAutoSubmit();
+        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [remainingTime]);
+  }, [questionStartTime, selectedQuestion, code, handleAutoSubmit]);
 
-  const fetchEventData = async () => {
-    try {
-      const response = await api.get(`/events/${eventId}`);
-      setEvent(response.data.event);
-      setRemainingTime(response.data.event.remainingTime);
-      if (response.data.event.questions.length > 0) {
-        setSelectedQuestion(response.data.event.questions[0]);
-        setLanguage(response.data.event.language.toLowerCase());
-      }
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to load event');
-      navigate('/student/dashboard');
-    }
-  };
 
   const handleSubmit = async () => {
     if (!code.trim()) {
@@ -67,10 +205,53 @@ export default function CodingEnvironment() {
       if (response.data.submission.verdict === 'ACCEPTED') {
         alert('Congratulations! Your solution is correct!');
       }
+      
+      // Option to move to next question after manual submit
+      const shouldMove = window.confirm('Move to next question?');
+      if (shouldMove) {
+        moveToNextQuestion();
+      }
     } catch (error: any) {
       alert(error.response?.data?.error || 'Submission failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleQuestionSelect = (question: any) => {
+    // Save current code before switching
+    if (code.trim() && selectedQuestion) {
+      // Optionally auto-save code when switching questions
+      localStorage.setItem(`code_${eventId}_${selectedQuestion.id}`, code);
+    }
+    
+    setSelectedQuestion(question);
+    setSubmissionResult(null);
+    setAutoSubmitted(false);
+    
+    // Load saved code for this question if exists
+    const savedCode = localStorage.getItem(`code_${eventId}_${question.id}`);
+    if (savedCode) {
+      setCode(savedCode);
+    } else {
+      setCode('');
+    }
+    
+    // Start timer for selected question
+    const storedStartTime = localStorage.getItem(`question_start_${eventId}_${question.id}`);
+    if (storedStartTime) {
+      setQuestionStartTime(parseInt(storedStartTime));
+      const elapsed = Math.floor((Date.now() - parseInt(storedStartTime)) / 1000);
+      const timeLimitSeconds = question.timeLimitMinutes * 60;
+      setRemainingTime(Math.max(0, timeLimitSeconds - elapsed));
+    } else {
+      const startTime = Date.now();
+      setQuestionStartTime(startTime);
+      localStorage.setItem(`question_start_${eventId}_${question.id}`, startTime.toString());
+      if (question.timeLimitMinutes) {
+        const timeLimitSeconds = question.timeLimitMinutes * 60;
+        setRemainingTime(timeLimitSeconds);
+      }
     }
   };
 
@@ -99,10 +280,21 @@ export default function CodingEnvironment() {
             <p className="text-gray-600">{event.language}</p>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-600 mb-1">Time Remaining</div>
-            <div className={`text-2xl font-bold ${remainingTime && remainingTime < 300 ? 'text-red-600' : 'text-gray-800'}`}>
+            <div className="text-sm text-gray-600 mb-1">
+              {selectedQuestion ? `Time Remaining (Q${event.questions.findIndex((q: any) => q.id === selectedQuestion.id) + 1})` : 'Time Remaining'}
+            </div>
+            <div className={`text-2xl font-bold ${
+              remainingTime !== null && remainingTime < 60 ? 'text-red-600' : 
+              remainingTime !== null && remainingTime < 300 ? 'text-orange-600' : 
+              'text-gray-800'
+            }`}>
               {remainingTime !== null ? formatTime(remainingTime) : 'N/A'}
             </div>
+            {selectedQuestion?.timeLimitMinutes && (
+              <div className="text-xs text-gray-500 mt-1">
+                Limit: {selectedQuestion.timeLimitMinutes} min
+              </div>
+            )}
           </div>
         </div>
 
@@ -114,7 +306,7 @@ export default function CodingEnvironment() {
               {event.questions.map((q: any, idx: number) => (
                 <button
                   key={q.id}
-                  onClick={() => setSelectedQuestion(q)}
+                  onClick={() => handleQuestionSelect(q)}
                   className={`w-full text-left p-4 rounded-lg border-2 transition duration-200 ${
                     selectedQuestion?.id === q.id
                       ? 'border-blue-600 bg-blue-50'
@@ -122,6 +314,9 @@ export default function CodingEnvironment() {
                   }`}
                 >
                   <div className="font-semibold text-gray-800">Question {idx + 1}: {q.title}</div>
+                  {q.timeLimitMinutes && (
+                    <div className="text-sm text-gray-600 mt-1">Time Limit: {q.timeLimitMinutes} minutes</div>
+                  )}
                 </button>
               ))}
             </div>
@@ -177,8 +372,14 @@ export default function CodingEnvironment() {
               disabled={submitting || !code.trim() || (remainingTime !== null && remainingTime <= 0)}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Submitting...' : remainingTime !== null && remainingTime <= 0 ? 'Time Up!' : 'Submit Code'}
+              {submitting ? 'Submitting...' : remainingTime !== null && remainingTime <= 0 ? 'Time Up! (Auto-submitted)' : 'Submit Code'}
             </button>
+            
+            {remainingTime !== null && remainingTime <= 0 && autoSubmitted && (
+              <div className="mt-2 text-sm text-orange-600 font-semibold">
+                ⏰ Time expired! Answer auto-saved. Moving to next question...
+              </div>
+            )}
 
             {submissionResult && (
               <div className={`mt-4 p-4 rounded-lg ${
