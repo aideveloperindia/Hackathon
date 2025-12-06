@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { sendEmail, generateVerificationEmail } from '../utils/email';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 const router = express.Router();
 
@@ -533,6 +534,161 @@ router.post(
     }
   }
 );
+
+// Google OAuth - Initiate login
+router.get('/google', (req: Request, res: Response) => {
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  
+  if (!GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ error: 'Google OAuth not configured' });
+  }
+
+  // Get the redirect URL from query or use default
+  const redirectUri = req.query.redirect_uri as string || 
+    (process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}/api/auth/google/callback`
+      : (process.env.FRONTEND_URL || 'http://localhost:3001') + '/api/auth/google/callback');
+
+  const scope = 'openid email profile';
+  const responseType = 'code';
+  const state = req.query.state as string || 'default';
+
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${GOOGLE_CLIENT_ID}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `response_type=${responseType}&` +
+    `scope=${encodeURIComponent(scope)}&` +
+    `state=${state}&` +
+    `access_type=offline&` +
+    `prompt=consent`;
+
+  res.redirect(googleAuthUrl);
+});
+
+// Google OAuth - Callback handler
+router.get('/google/callback', async (req: Request, res: Response) => {
+  try {
+    const { code, state } = req.query;
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=oauth_cancelled`);
+    }
+
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      const frontendUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}`
+        : (process.env.FRONTEND_URL || 'http://localhost:3001');
+      return res.redirect(`${frontendUrl}/student/login?error=oauth_not_configured`);
+    }
+
+    // Exchange code for tokens
+    const redirectUri = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}/api/auth/google/callback`
+      : (process.env.FRONTEND_URL || 'http://localhost:3001') + '/api/auth/google/callback';
+
+    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    });
+
+    const { access_token, id_token } = tokenResponse.data;
+
+    // Get user info from Google
+    const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+
+    const { email, name, picture, verified_email } = userInfoResponse.data;
+
+    if (!email) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=no_email`);
+    }
+
+    // Check if email is verified by Google
+    if (!verified_email) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=email_not_verified`);
+    }
+
+    // Find or create student account
+    let student = await prisma.student.findUnique({
+      where: { email },
+      include: { masterStudent: true },
+    });
+
+    if (!student) {
+      // Create a temporary master student record for OAuth users
+      // They'll need to complete their profile later
+      const tempHtNo = `OAUTH-${Date.now()}`;
+      let masterStudent = await prisma.masterStudent.findUnique({
+        where: { htNo: tempHtNo },
+      });
+
+      if (!masterStudent) {
+        masterStudent = await prisma.masterStudent.create({
+          data: {
+            htNo: tempHtNo,
+            name: name || 'OAuth User',
+            branch: 'OAuth',
+            section: 'OAuth',
+            year: 1,
+          },
+        });
+      }
+
+      // Create student account with email verified (since Google verified it)
+      const passwordHash = await hashPassword(uuidv4()); // Random password for OAuth users
+      student = await prisma.student.create({
+        data: {
+          masterStudentId: masterStudent.id,
+          email,
+          passwordHash,
+          isEmailVerified: true, // ✅ Auto-verified by Google!
+          emailVerifyToken: null,
+          emailVerifyExpiry: null,
+        },
+        include: { masterStudent: true },
+      });
+    } else {
+      // Existing user - auto-verify their email if not already verified
+      if (!student.isEmailVerified) {
+        await prisma.student.update({
+          where: { id: student.id },
+          data: {
+            isEmailVerified: true,
+            emailVerifyToken: null,
+            emailVerifyExpiry: null,
+          },
+        });
+      }
+    }
+
+    // Generate JWT token
+    const token = generateToken({
+      userId: student.id,
+      email: student.email,
+      role: 'student',
+      htNo: student.masterStudent.htNo,
+    });
+
+    // Redirect to frontend with token
+    const frontendUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : (process.env.FRONTEND_URL || 'http://localhost:3001');
+    
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}&email=${encodeURIComponent(email)}`);
+  } catch (error: any) {
+    console.error('Google OAuth callback error:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    res.redirect(`${frontendUrl}/student/login?error=oauth_failed`);
+  }
+});
 
 export default router;
 

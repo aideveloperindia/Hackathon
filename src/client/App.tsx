@@ -11,6 +11,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import CodingEnvironment from './pages/CodingEnvironment';
 import Leaderboard from './pages/Leaderboard';
 import VerifyEmail from './pages/VerifyEmail';
+import AuthCallback from './pages/AuthCallback';
 import ConductEvent from './pages/ConductEvent';
 
 function PrivateRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: 'student' | 'admin' }) {
@@ -48,6 +49,7 @@ function App() {
           <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           
           <Route
             path="/select-language"
