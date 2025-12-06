@@ -544,14 +544,24 @@ router.get('/google', (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Google OAuth not configured' });
   }
 
-  // Get the redirect URL from query or use default
-  const isProduction = process.env.VERCEL_URL || process.env.NODE_ENV === 'production';
-  const baseUrl = isProduction 
-    ? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.FRONTEND_URL || 'http://localhost:3001')
-    : (process.env.FRONTEND_URL || 'http://localhost:3001');
+  // Get the redirect URL - must match Google Cloud Console configuration
+  let redirectUri: string;
   
-  const redirectUri = req.query.redirect_uri as string || 
-    `${baseUrl}/api/auth/google/callback`;
+  if (process.env.VERCEL_URL) {
+    // Production on Vercel
+    redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
+  } else if (process.env.FRONTEND_URL) {
+    // Custom frontend URL
+    redirectUri = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+  } else {
+    // Local development
+    redirectUri = 'http://localhost:3001/api/auth/google/callback';
+  }
+  
+  // Allow override from query parameter
+  if (req.query.redirect_uri) {
+    redirectUri = req.query.redirect_uri as string;
+  }
 
   const scope = 'openid email profile';
   const responseType = 'code';
@@ -587,10 +597,16 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       return res.redirect(`${frontendUrl}/student/login?error=oauth_not_configured`);
     }
 
-    // Exchange code for tokens
-    const redirectUri = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}/api/auth/google/callback`
-      : (process.env.FRONTEND_URL || 'http://localhost:3001') + '/api/auth/google/callback';
+    // Exchange code for tokens - must match the redirect URI used in the initial request
+    let redirectUri: string;
+    
+    if (process.env.VERCEL_URL) {
+      redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
+    } else if (process.env.FRONTEND_URL) {
+      redirectUri = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+    } else {
+      redirectUri = 'http://localhost:3001/api/auth/google/callback';
+    }
 
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       code,
