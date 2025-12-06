@@ -24,6 +24,18 @@ export default function StudentDashboard() {
     try {
       const response = await api.get('/student/dashboard');
       setDashboardData(response.data);
+      
+      // Check if student needs to complete profile
+      const student = response.data?.student;
+      if (student && (
+        student.htNo?.startsWith('OAUTH-') ||
+        student.branch === 'OAuth' ||
+        !student.phoneNumber
+      )) {
+        console.log('Redirecting to complete-profile - incomplete profile detected');
+        navigate('/complete-profile');
+        return;
+      }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {

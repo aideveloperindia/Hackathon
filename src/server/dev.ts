@@ -1,3 +1,5 @@
+// Unified development server - runs both Express and Vite on one port
+import { createServer as createViteServer } from 'vite';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -12,14 +14,11 @@ import submissionRoutes from './routes/submission.routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
-
-// Export prisma for routes (using singleton from utils/prisma.ts)
-export { prisma };
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: true, // Allow all origins in unified setup
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
@@ -37,48 +36,51 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/submissions', submissionRoutes);
 
-// Serve static files from the React app in production
-if (process.env.NODE_ENV === 'production') {
-  const clientBuildPath = path.join(__dirname, '../../dist/client');
-  app.use(express.static(clientBuildPath));
-  
-  // Serve React app for all non-API routes
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
-  });
-}
-
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    stack: err.stack
   });
 });
 
-// 404 handler for API routes (only in development, production handled above)
-if (process.env.NODE_ENV !== 'production') {
-  // Handle API routes that don't exist
-  app.use('/api/*', (req, res) => {
-    res.status(404).json({ error: 'API route not found' });
-  });
-  
-  // Handle non-API routes in development
-  app.get('*', (req, res) => {
-    res.status(404).json({ 
-      error: 'Route not found',
-      message: 'This is the backend API server. Please access the frontend at http://localhost:3001',
-      apiHealth: 'http://localhost:5001/api/health'
+async function startDevServer() {
+  try {
+    // Create Vite dev server
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+      root: path.resolve(__dirname, '../client'),
+      configFile: path.resolve(__dirname, '../../vite.config.ts'),
+      clearScreen: false,
     });
-  });
+
+    // Use vite's connect instance as middleware (handle all non-API routes)
+    app.use((req, res, next) => {
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      vite.middlewares(req, res, next);
+    });
+
+    // Handle API 404s
+    app.use('/api/*', (req, res) => {
+      res.status(404).json({ error: 'API route not found' });
+    });
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Unified development server running on http://localhost:${PORT}`);
+      console.log(`📊 Environment: development`);
+      console.log(`✨ Frontend and backend running together on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start dev server:', err);
+    process.exit(1);
+  }
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+startDevServer();
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

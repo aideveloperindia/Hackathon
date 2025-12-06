@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
-    "dev:client": "vite",
+    "dev:client": "vite --port 3001",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "tsc",
@@ -61,7 +61,8 @@
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vercel": "^49.1.0",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vite-express": "^0.21.1"
   },
   "prisma": {
     "seed": "tsx src/server/prisma/seed.ts"

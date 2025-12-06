@@ -4,6 +4,7 @@ import { prisma } from '../utils/prisma';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { sendEmail, generateVerificationEmail } from '../utils/email';
+import { authenticate, requireStudent } from '../middleware/auth.middleware';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
@@ -544,10 +545,13 @@ router.get('/google', (req: Request, res: Response) => {
   }
 
   // Get the redirect URL from query or use default
+  const isProduction = process.env.VERCEL_URL || process.env.NODE_ENV === 'production';
+  const baseUrl = isProduction 
+    ? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.FRONTEND_URL || 'http://localhost:3001')
+    : (process.env.FRONTEND_URL || 'http://localhost:3001');
+  
   const redirectUri = req.query.redirect_uri as string || 
-    (process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}/api/auth/google/callback`
-      : (process.env.FRONTEND_URL || 'http://localhost:3001') + '/api/auth/google/callback');
+    `${baseUrl}/api/auth/google/callback`;
 
   const scope = 'openid email profile';
   const responseType = 'code';
@@ -667,7 +671,31 @@ router.get('/google/callback', async (req: Request, res: Response) => {
           },
         });
       }
+      
+      // Reload student to get updated masterStudent
+      student = await prisma.student.findUnique({
+        where: { id: student.id },
+        include: { masterStudent: true },
+      });
     }
+
+    if (!student || !student.masterStudent) {
+      console.error('❌ Student or masterStudent not found after OAuth login');
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=student_not_found`);
+    }
+
+    // Check if student needs to complete profile
+    // Either HT number starts with OAUTH- OR has incomplete profile data
+    const needsProfileCompletion = 
+      student.masterStudent.htNo.startsWith('OAUTH-') ||
+      student.masterStudent.branch === 'OAuth' ||
+      !student.masterStudent.phoneNumber;
+    
+    console.log('🔍 OAuth login check:');
+    console.log('  - Student HT No:', student.masterStudent.htNo);
+    console.log('  - Student Branch:', student.masterStudent.branch);
+    console.log('  - Student Phone:', student.masterStudent.phoneNumber);
+    console.log('  - Needs profile completion:', needsProfileCompletion);
 
     // Generate JWT token
     const token = generateToken({
@@ -682,11 +710,103 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       ? `https://${process.env.VERCEL_URL}`
       : (process.env.FRONTEND_URL || 'http://localhost:3001');
     
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}&email=${encodeURIComponent(email)}`);
+    if (needsProfileCompletion) {
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&email=${encodeURIComponent(email)}&completeProfile=true`);
+    } else {
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&email=${encodeURIComponent(email)}`);
+    }
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     res.redirect(`${frontendUrl}/student/login?error=oauth_failed`);
+  }
+});
+
+// Complete student profile (for OAuth users)
+router.post('/complete-profile', authenticate, requireStudent, [
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('htNo').trim().notEmpty().withMessage('Hall Ticket Number is required'),
+  body('year').isInt({ min: 1, max: 4 }).withMessage('Year must be between 1 and 4'),
+  body('section').trim().notEmpty().withMessage('Section is required'),
+  body('phoneNumber').trim().notEmpty().withMessage('Phone number is required'),
+  body('branch').optional().trim(),
+], async (req: Request, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const studentId = req.user!.userId;
+    const { name, htNo, year, section, phoneNumber, branch } = req.body;
+
+    // Get current student
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { masterStudent: true },
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Check if HT number is already taken by another student
+    const existingMasterStudent = await prisma.masterStudent.findUnique({
+      where: { htNo: htNo.toUpperCase() },
+      include: { student: true },
+    });
+
+    if (existingMasterStudent && existingMasterStudent.student && existingMasterStudent.student.id !== studentId) {
+      return res.status(400).json({ error: 'This Hall Ticket Number is already registered to another account' });
+    }
+
+    // Update or create master student record
+    let masterStudent;
+    if (student.masterStudent.htNo.startsWith('OAUTH-')) {
+      // Update existing temporary master student
+      masterStudent = await prisma.masterStudent.update({
+        where: { id: student.masterStudentId },
+        data: {
+          htNo: htNo.toUpperCase(),
+          name: name.trim(),
+          year: parseInt(year),
+          section: section.toUpperCase(),
+          phoneNumber: phoneNumber.trim(),
+          branch: (branch || 'CSE').toUpperCase(),
+        },
+      });
+    } else {
+      // Update existing master student
+      masterStudent = await prisma.masterStudent.update({
+        where: { id: student.masterStudentId },
+        data: {
+          name: name.trim(),
+          year: parseInt(year),
+          section: section.toUpperCase(),
+          phoneNumber: phoneNumber.trim(),
+        },
+      });
+    }
+
+    res.json({
+      message: 'Profile completed successfully',
+      student: {
+        id: student.id,
+        email: student.email,
+        htNo: masterStudent.htNo,
+        name: masterStudent.name,
+        branch: masterStudent.branch,
+        section: masterStudent.section,
+        year: masterStudent.year,
+        phoneNumber: masterStudent.phoneNumber,
+      },
+    });
+  } catch (error: any) {
+    console.error('Complete profile error:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Hall Ticket Number is already in use' });
+    }
+    res.status(500).json({ error: 'Failed to complete profile' });
   }
 });
 

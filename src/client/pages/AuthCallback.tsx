@@ -11,16 +11,17 @@ export default function AuthCallback() {
     const token = searchParams.get('token');
     const email = searchParams.get('email');
     const error = searchParams.get('error');
+    const completeProfile = searchParams.get('completeProfile') === 'true';
 
     if (error) {
-      // Handle OAuth errors
+      // Handle authentication errors
       let errorMessage = 'Authentication failed. Please try again.';
       if (error === 'oauth_cancelled') {
-        errorMessage = 'Google sign-in was cancelled.';
+        errorMessage = 'Sign-in was cancelled.';
       } else if (error === 'no_email') {
-        errorMessage = 'No email found in Google account.';
+        errorMessage = 'No email found in account.';
       } else if (error === 'email_not_verified') {
-        errorMessage = 'Your Google email is not verified.';
+        errorMessage = 'Your email is not verified.';
       }
       navigate(`/student/login?error=${encodeURIComponent(errorMessage)}`);
       return;
@@ -36,9 +37,16 @@ export default function AuthCallback() {
 
       login(token, userData);
       
-      // Navigate to language selection or dashboard
+      // Navigate to complete profile if needed, otherwise to language selection
+      console.log('AuthCallback - completeProfile flag:', completeProfile);
       setTimeout(() => {
-        navigate('/select-language');
+        if (completeProfile) {
+          console.log('Redirecting to complete-profile page');
+          navigate('/complete-profile');
+        } else {
+          console.log('Redirecting to select-language page');
+          navigate('/select-language');
+        }
       }, 100);
     } else {
       navigate('/student/login?error=Invalid authentication response');

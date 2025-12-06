@@ -13,6 +13,7 @@ import Leaderboard from './pages/Leaderboard';
 import VerifyEmail from './pages/VerifyEmail';
 import AuthCallback from './pages/AuthCallback';
 import ConductEvent from './pages/ConductEvent';
+import CompleteStudentProfile from './pages/CompleteStudentProfile';
 
 function PrivateRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: 'student' | 'admin' }) {
   const { isAuthenticated, user } = useAuth();
@@ -50,6 +51,15 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          
+          <Route
+            path="/complete-profile"
+            element={
+              <PrivateRoute requireRole="student">
+                <CompleteStudentProfile />
+              </PrivateRoute>
+            }
+          />
           
           <Route
             path="/select-language"
