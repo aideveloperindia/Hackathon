@@ -122,13 +122,34 @@ export default function StudentLogin() {
                       const email = prompt('Enter your email address to resend verification:');
                       if (email && email.trim()) {
                         setLoading(true);
-                        await api.post('/auth/student/resend-verification', { email: email.trim() });
-                        alert('✅ Verification email sent! Please check your inbox (and spam folder).');
+                        const response = await api.post('/auth/student/resend-verification', { email: email.trim() });
+                        
+                        // Show verification URL if email failed or always show it
+                        const message = response.data.emailSent
+                          ? '✅ Verification email sent! Please check your inbox (and spam folder).\n\n'
+                          : '⚠️ Email sending failed, but you can verify using the link below.\n\n';
+                        
+                        const verificationUrl = response.data.verificationUrl;
+                        const fullMessage = message + 
+                          'Verification Link:\n' + verificationUrl + '\n\n' +
+                          'Click OK to copy the link, or click Cancel to dismiss.';
+                        
+                        if (confirm(fullMessage)) {
+                          // Copy to clipboard
+                          navigator.clipboard.writeText(verificationUrl).then(() => {
+                            alert('✅ Verification link copied to clipboard! Paste it in your browser to verify your email.');
+                          }).catch(() => {
+                            // Fallback if clipboard API fails
+                            prompt('Copy this verification link:', verificationUrl);
+                          });
+                        }
+                        
                         setError('');
                         setNeedsVerification(false);
                       }
                     } catch (err: any) {
-                      alert(err.response?.data?.error || 'Failed to resend verification email. Please try again.');
+                      const errorMsg = err.response?.data?.error || 'Failed to resend verification email. Please try again.';
+                      alert('❌ ' + errorMsg);
                     } finally {
                       setLoading(false);
                     }

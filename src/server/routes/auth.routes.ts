@@ -337,26 +337,37 @@ router.post('/student/resend-verification', async (req: Request, res: Response) 
       },
     });
 
-    // Send email
-    try {
-      await sendEmail(generateVerificationEmail(verifyToken, email));
-      console.log('✅ Resend verification email sent to:', email);
-    } catch (emailError: any) {
-      console.error('⚠️ Failed to send verification email:', emailError.message);
-      // Still return success with verification URL for manual use
-    }
-
     // Generate verification URL for response
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}`
       : (process.env.FRONTEND_URL || 'http://localhost:3001');
     const verificationUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
 
+    // Send email
+    let emailSent = false;
+    let emailError = null;
+    try {
+      await sendEmail(generateVerificationEmail(verifyToken, email));
+      console.log('✅ Resend verification email sent to:', email);
+      emailSent = true;
+    } catch (emailErrorCaught: any) {
+      emailError = emailErrorCaught;
+      console.error('⚠️ Failed to send verification email:', emailErrorCaught.message);
+      if (emailErrorCaught.code === 'EAUTH') {
+        console.error('   ❌ Gmail authentication failed. Check GMAIL_APP_PASSWORD in environment variables.');
+      }
+    }
+
+    // Always return verification URL so user can verify even if email fails
     res.json({ 
-      message: 'Verification email sent. Please check your inbox (and spam folder).',
+      message: emailSent 
+        ? 'Verification email sent. Please check your inbox (and spam folder).'
+        : 'Email sending failed, but you can use the verification link below.',
       verificationUrl: verificationUrl,
-      ...(process.env.NODE_ENV === 'development' && {
-        note: 'In development, you can also use the verification URL above'
+      emailSent: emailSent,
+      ...(emailError && {
+        emailError: emailError.message,
+        note: 'If email is not working, use the verification URL above to verify your account.'
       })
     });
   } catch (error: any) {
