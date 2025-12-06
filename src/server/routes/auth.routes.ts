@@ -266,8 +266,11 @@ router.post('/student/verify-email', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Verification token is required' });
     }
 
-    console.log('🔍 Verifying email with token:', token.substring(0, 8) + '...');
+    console.log('🔍 Verifying email with token:', token.substring(0, 20) + '...');
+    console.log('🔍 Token length:', token.length);
+    console.log('🔍 Token type:', typeof token);
 
+    // Try to find student with this token
     const student = await prisma.student.findFirst({
       where: {
         emailVerifyToken: token,
@@ -275,7 +278,17 @@ router.post('/student/verify-email', async (req: Request, res: Response) => {
     });
 
     if (!student) {
-      console.log('❌ Token not found in database. Token may have been used or expired.');
+      console.log('❌ Token not found in database. Token may have been used, expired, or invalid.');
+      console.log('🔍 Searching for similar tokens...');
+      
+      // Debug: Check if there are any unverified students
+      const unverifiedCount = await prisma.student.count({
+        where: {
+          isEmailVerified: false,
+          emailVerifyToken: { not: null },
+        },
+      });
+      console.log('📊 Unverified students with tokens:', unverifiedCount);
       // Check if student exists but token is null (already verified)
       const studentByEmail = await prisma.student.findFirst({
         where: {

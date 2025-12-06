@@ -9,14 +9,20 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     const token = searchParams.get('token');
+    console.log('🔍 Verification token from URL:', token ? token.substring(0, 20) + '...' : 'MISSING');
+    
     if (!token) {
       setStatus('error');
-      setMessage('Invalid verification link');
+      setMessage('Invalid verification link - no token found in URL');
       return;
     }
 
+    // Decode token in case it's URL encoded
+    const decodedToken = decodeURIComponent(token);
+    console.log('🔍 Decoded token:', decodedToken.substring(0, 20) + '...');
+
     api
-      .post('/auth/student/verify-email', { token })
+      .post('/auth/student/verify-email', { token: decodedToken })
       .then(() => {
         setStatus('success');
         setMessage('Email verified successfully! You can now log in.');
@@ -25,6 +31,8 @@ export default function VerifyEmail() {
         setStatus('error');
         const errorData = error.response?.data;
         let errorMessage = errorData?.error || 'Verification failed. Please try again.';
+        
+        console.error('❌ Verification error:', errorData);
         
         // If already verified, show success message
         if (errorData?.alreadyVerified) {
@@ -67,12 +75,18 @@ export default function VerifyEmail() {
             <div className="text-red-600 text-5xl mb-4">✗</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Verification Failed</h2>
             <p className="text-gray-600 mb-6">{message}</p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-sm text-yellow-800">
+              <p className="font-semibold mb-2">💡 Quick Fix:</p>
+              <p>1. Go to login page</p>
+              <p>2. Click "Resend verification email"</p>
+              <p>3. Use the NEW link immediately</p>
+            </div>
             <div className="space-y-3">
               <Link
                 to="/student/login"
                 className="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 text-center"
               >
-                Go to Login
+                Go to Login & Resend
               </Link>
               <Link
                 to="/"
