@@ -110,7 +110,26 @@ export default function StudentLogin() {
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+            <p className="mb-2">{error}</p>
+            {error.includes('verify your email') && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const email = prompt('Enter your email address to resend verification:');
+                    if (email) {
+                      await api.post('/auth/student/resend-verification', { email });
+                      alert('Verification email sent! Please check your inbox.');
+                    }
+                  } catch (err: any) {
+                    alert(err.response?.data?.error || 'Failed to resend verification email');
+                  }
+                }}
+                className="text-sm underline hover:no-underline"
+              >
+                Resend verification email
+              </button>
+            )}
           </div>
         )}
 

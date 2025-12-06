@@ -108,7 +108,11 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
 }
 
 export function generateVerificationEmail(verifyToken: string, email: string): EmailOptions {
-  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email?token=${verifyToken}`;
+  // Use VERCEL_URL if available (for production), otherwise FRONTEND_URL, fallback to localhost
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}`
+    : (process.env.FRONTEND_URL || 'http://localhost:3001');
+  const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
   
   return {
     to: email,

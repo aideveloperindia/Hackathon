@@ -116,18 +116,24 @@ router.post(
         },
       });
 
+      // Generate verification URL for logging
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}`
+        : (process.env.FRONTEND_URL || 'http://localhost:3001');
+      const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
+
       // Send verification email (non-blocking - don't fail registration if email fails)
       sendEmail(generateVerificationEmail(verifyToken, email))
         .then(() => {
           console.log('✅ Verification email sent successfully to:', email);
+          console.log('📧 Verification URL:', verifyUrl);
         })
         .catch((emailError: any) => {
           console.error('⚠️ Failed to send verification email (registration still successful):', emailError.message);
-          // In development, log the verification URL
-          if (process.env.NODE_ENV === 'development') {
-            const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email?token=${verifyToken}`;
-            console.log('📧 Verification URL (for manual testing):', verifyUrl);
+          if (emailError.code === 'EAUTH') {
+            console.error('   ❌ Gmail authentication failed. Check GMAIL_APP_PASSWORD in environment variables.');
           }
+          console.log('📧 Verification URL (use this if email not received):', verifyUrl);
         });
 
       res.status(201).json({
@@ -332,11 +338,26 @@ router.post('/student/resend-verification', async (req: Request, res: Response) 
     });
 
     // Send email
-    await sendEmail(generateVerificationEmail(verifyToken, email));
+    try {
+      await sendEmail(generateVerificationEmail(verifyToken, email));
+      console.log('✅ Resend verification email sent to:', email);
+    } catch (emailError: any) {
+      console.error('⚠️ Failed to send verification email:', emailError.message);
+      // Still return success with verification URL for manual use
+    }
+
+    // Generate verification URL for response
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : (process.env.FRONTEND_URL || 'http://localhost:3001');
+    const verificationUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
 
     res.json({ 
-      message: 'Verification email sent. Check your inbox or MailHog at http://localhost:8025',
-      verificationUrl: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email?token=${verifyToken}`
+      message: 'Verification email sent. Please check your inbox (and spam folder).',
+      verificationUrl: verificationUrl,
+      ...(process.env.NODE_ENV === 'development' && {
+        note: 'In development, you can also use the verification URL above'
+      })
     });
   } catch (error: any) {
     console.error('Resend verification error:', error);
