@@ -30,7 +30,7 @@ const allowedOrigins = [
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin or from allowed origins
-    if (!origin || allowedOrigins.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
+    if (!origin || allowedOrigins.some(allowed => allowed && origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
       callback(null, true);
     } else {
       callback(null, true); // Allow all in production
