@@ -23,7 +23,18 @@ export default function VerifyEmail() {
       })
       .catch((error) => {
         setStatus('error');
-        setMessage(error.response?.data?.error || 'Verification failed. Please try again.');
+        const errorData = error.response?.data;
+        let errorMessage = errorData?.error || 'Verification failed. Please try again.';
+        
+        // If already verified, show success message
+        if (errorData?.alreadyVerified) {
+          setStatus('success');
+          errorMessage = 'This email is already verified! You can log in now.';
+        } else if (errorData?.suggestion) {
+          errorMessage = `${errorMessage} ${errorData.suggestion}`;
+        }
+        
+        setMessage(errorMessage);
       });
   }, [searchParams]);
 
@@ -56,12 +67,20 @@ export default function VerifyEmail() {
             <div className="text-red-600 text-5xl mb-4">✗</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Verification Failed</h2>
             <p className="text-gray-600 mb-6">{message}</p>
-            <Link
-              to="/"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
-            >
-              Back to Home
-            </Link>
+            <div className="space-y-3">
+              <Link
+                to="/student/login"
+                className="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 text-center"
+              >
+                Go to Login
+              </Link>
+              <Link
+                to="/"
+                className="inline-block w-full text-gray-600 hover:text-gray-800 text-center"
+              >
+                ← Back to Home
+              </Link>
+            </div>
           </>
         )}
       </div>

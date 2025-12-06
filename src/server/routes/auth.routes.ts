@@ -266,6 +266,8 @@ router.post('/student/verify-email', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Verification token is required' });
     }
 
+    console.log('🔍 Verifying email with token:', token.substring(0, 8) + '...');
+
     const student = await prisma.student.findFirst({
       where: {
         emailVerifyToken: token,
@@ -273,7 +275,25 @@ router.post('/student/verify-email', async (req: Request, res: Response) => {
     });
 
     if (!student) {
-      return res.status(400).json({ error: 'Invalid verification token' });
+      console.log('❌ Token not found in database. Token may have been used or expired.');
+      // Check if student exists but token is null (already verified)
+      const studentByEmail = await prisma.student.findFirst({
+        where: {
+          email: req.body.email || undefined,
+        },
+      });
+      
+      if (studentByEmail?.isEmailVerified) {
+        return res.status(400).json({ 
+          error: 'This email is already verified. You can log in now.',
+          alreadyVerified: true 
+        });
+      }
+      
+      return res.status(400).json({ 
+        error: 'Invalid or expired verification token. Please request a new verification email.',
+        suggestion: 'Click "Resend verification email" to get a new link.'
+      });
     }
 
     // Check if token expired (but allow verification even if slightly expired in dev)
