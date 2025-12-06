@@ -545,14 +545,15 @@ router.get('/google', (req: Request, res: Response) => {
   }
 
   // Get the redirect URL - must match Google Cloud Console configuration
+  // Use FRONTEND_URL (fixed production URL) if set, otherwise use VERCEL_URL or localhost
   let redirectUri: string;
   
-  if (process.env.VERCEL_URL) {
-    // Production on Vercel
-    redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
-  } else if (process.env.FRONTEND_URL) {
-    // Custom frontend URL
+  if (process.env.FRONTEND_URL) {
+    // Fixed production URL (preferred - set this in Vercel env vars)
     redirectUri = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+  } else if (process.env.VERCEL_URL) {
+    // Fallback to dynamic Vercel URL
+    redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
   } else {
     // Local development
     redirectUri = 'http://localhost:3001/api/auth/google/callback';
@@ -598,13 +599,17 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     }
 
     // Exchange code for tokens - must match the redirect URI used in the initial request
+    // Use FRONTEND_URL (fixed production URL) if set, otherwise use VERCEL_URL or localhost
     let redirectUri: string;
     
-    if (process.env.VERCEL_URL) {
-      redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
-    } else if (process.env.FRONTEND_URL) {
+    if (process.env.FRONTEND_URL) {
+      // Fixed production URL (preferred - set this in Vercel env vars)
       redirectUri = `${process.env.FRONTEND_URL}/api/auth/google/callback`;
+    } else if (process.env.VERCEL_URL) {
+      // Fallback to dynamic Vercel URL
+      redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
     } else {
+      // Local development
       redirectUri = 'http://localhost:3001/api/auth/google/callback';
     }
 
