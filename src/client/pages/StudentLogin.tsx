@@ -12,6 +12,7 @@ export default function StudentLogin() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -64,9 +65,11 @@ export default function StudentLogin() {
       
       // Extract error message safely - always ensure it's a string
       let errorMessage = 'Login failed. Please check your credentials and try again.';
+      let isVerificationError = false;
       
-      if (error.response?.data?.requiresVerification) {
+      if (error.response?.data?.requiresVerification || error.response?.status === 403) {
         errorMessage = 'Please verify your email before logging in. Check your inbox for the verification link.';
+        isVerificationError = true;
       } else if (error.response?.status === 401) {
         const errorData = error.response?.data;
         if (typeof errorData?.error === 'string') {
@@ -76,29 +79,28 @@ export default function StudentLogin() {
         } else {
           errorMessage = 'Invalid Hall Ticket Number or password. Please check and try again.';
         }
-      } else if (error.response?.status === 403) {
-        const errorData = error.response?.data;
-        if (typeof errorData?.error === 'string') {
-          errorMessage = errorData.error;
-        } else if (errorData?.error?.message) {
-          errorMessage = errorData.error.message;
-        } else {
-          errorMessage = 'Access denied. Please verify your email first.';
-        }
       } else if (error.response?.data) {
         const errorData = error.response.data;
         if (typeof errorData.error === 'string') {
           errorMessage = errorData.error;
         } else if (errorData.error?.message) {
           errorMessage = errorData.error.message;
-        } else if (typeof errorData.message === 'string') {
+        } else         if (typeof errorData.message === 'string') {
           errorMessage = errorData.message;
+        }
+        // Check if error message indicates verification needed
+        if (typeof errorData.error === 'string' && errorData.error.toLowerCase().includes('verify')) {
+          isVerificationError = true;
         }
       } else if (error.message && typeof error.message === 'string') {
         errorMessage = error.message;
+        if (error.message.toLowerCase().includes('verify')) {
+          isVerificationError = true;
+        }
       }
       
       setError(errorMessage);
+      setNeedsVerification(isVerificationError);
       setLoading(false);
     }
   };
@@ -111,24 +113,31 @@ export default function StudentLogin() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
             <p className="mb-2">{error}</p>
-            {error.includes('verify your email') && (
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    const email = prompt('Enter your email address to resend verification:');
-                    if (email) {
-                      await api.post('/auth/student/resend-verification', { email });
-                      alert('Verification email sent! Please check your inbox.');
+            {needsVerification && (
+              <div className="mt-3 pt-3 border-t border-red-200">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const email = prompt('Enter your email address to resend verification:');
+                      if (email && email.trim()) {
+                        setLoading(true);
+                        await api.post('/auth/student/resend-verification', { email: email.trim() });
+                        alert('✅ Verification email sent! Please check your inbox (and spam folder).');
+                        setError('');
+                        setNeedsVerification(false);
+                      }
+                    } catch (err: any) {
+                      alert(err.response?.data?.error || 'Failed to resend verification email. Please try again.');
+                    } finally {
+                      setLoading(false);
                     }
-                  } catch (err: any) {
-                    alert(err.response?.data?.error || 'Failed to resend verification email');
-                  }
-                }}
-                className="text-sm underline hover:no-underline"
-              >
-                Resend verification email
-              </button>
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline hover:no-underline font-semibold"
+                >
+                  📧 Resend verification email
+                </button>
+              </div>
             )}
           </div>
         )}
