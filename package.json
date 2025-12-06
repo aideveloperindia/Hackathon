@@ -15,7 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx src/server/prisma/seed.ts",
-    "vercel-build": "npm install --include=dev && npm run build",
+    "vercel-build": "npm install --include=dev && prisma generate && npm run build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:build": "docker-compose build"
