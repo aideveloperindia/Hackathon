@@ -81,3 +81,4 @@ You can safely delete the old directories after verifying everything works:
 
 Make sure to test the application thoroughly before deleting these directories.
 
+

@@ -33,3 +33,4 @@ echo ""
 echo "Note: Email is optional. Registration will work even without email configuration."
 echo "      In development, verification URLs will be logged to the console."
 
+

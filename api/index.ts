@@ -7,8 +7,8 @@ import path from 'path';
 // Load environment variables
 dotenv.config();
 
-// Export prisma for routes to use
-export { prisma } from '../src/server/index';
+// Export prisma for routes to use (using singleton pattern)
+export { prisma } from '../src/server/utils/prisma';
 
 // Import routes (they will import prisma from src/server/index)
 import studentRoutes from '../src/server/routes/student.routes';

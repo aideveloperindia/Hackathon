@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { prisma } from '../index';
+import { prisma } from '../utils/prisma';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { sendEmail, generateVerificationEmail } from '../utils/email';
@@ -453,7 +453,18 @@ router.post(
       });
     } catch (error: any) {
       console.error('Admin login error:', error);
-      res.status(500).json({ error: 'Login failed. Please try again.' });
+      
+      // Extract error message safely
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.message && typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (error.code) {
+        // Prisma or other error codes
+        errorMessage = `Database error: ${error.code}`;
+      }
+      
+      res.status(500).json({ error: errorMessage });
     }
   }
 );

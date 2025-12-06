@@ -62,23 +62,43 @@ export default function StudentLogin() {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Handle different error cases - DO NOT proceed on error
+      // Extract error message safely - always ensure it's a string
+      let errorMessage = 'Login failed. Please check your credentials and try again.';
+      
       if (error.response?.data?.requiresVerification) {
-        setError('Please verify your email before logging in. Check your inbox for the verification link.');
+        errorMessage = 'Please verify your email before logging in. Check your inbox for the verification link.';
       } else if (error.response?.status === 401) {
-        // Password or credentials wrong
-        setError(error.response?.data?.error || 'Invalid Hall Ticket Number or password. Please check and try again.');
+        const errorData = error.response?.data;
+        if (typeof errorData?.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (errorData?.error?.message) {
+          errorMessage = errorData.error.message;
+        } else {
+          errorMessage = 'Invalid Hall Ticket Number or password. Please check and try again.';
+        }
       } else if (error.response?.status === 403) {
-        setError(error.response?.data?.error || 'Access denied. Please verify your email first.');
-      } else if (error.response?.data?.error) {
-        setError(error.response.data.error);
-      } else if (error.message) {
-        setError(error.message);
-      } else {
-        setError('Login failed. Please check your credentials and try again.');
+        const errorData = error.response?.data;
+        if (typeof errorData?.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (errorData?.error?.message) {
+          errorMessage = errorData.error.message;
+        } else {
+          errorMessage = 'Access denied. Please verify your email first.';
+        }
+      } else if (error.response?.data) {
+        const errorData = error.response.data;
+        if (typeof errorData.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        } else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+      } else if (error.message && typeof error.message === 'string') {
+        errorMessage = error.message;
       }
       
-      // Ensure we don't proceed on error
+      setError(errorMessage);
       setLoading(false);
     }
   };

@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { prisma } from '../index';
+import { prisma } from '../utils/prisma';
 import { authenticate, requireStudent, requireAdmin } from '../middleware/auth.middleware';
 
 const router = express.Router();

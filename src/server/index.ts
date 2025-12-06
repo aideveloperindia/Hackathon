@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './utils/prisma';
 import studentRoutes from './routes/student.routes';
 import adminRoutes from './routes/admin.routes';
 import authRoutes from './routes/auth.routes';
@@ -14,8 +14,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Initialize Prisma Client
-export const prisma = new PrismaClient();
+// Export prisma for routes (using singleton from utils/prisma.ts)
+export { prisma };
 
 // Middleware
 app.use(cors({

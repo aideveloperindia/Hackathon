@@ -93,3 +93,4 @@ After enabling email:
 
 **Note:** Email works the same way locally and on Vercel - you just need to configure it!
 
+

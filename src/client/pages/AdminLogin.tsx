@@ -65,19 +65,33 @@ export default function AdminLogin() {
     } catch (error: any) {
       console.error('Admin login error:', error);
       
-      // Handle different error cases - DO NOT proceed on error
+      // Extract error message safely - always ensure it's a string
+      let errorMessage = 'Login failed. Please check your credentials and try again.';
+      
       if (error.response?.status === 401) {
         // Password or credentials wrong
-        setError(error.response?.data?.error || 'Invalid email or password. Please check and try again.');
-      } else if (error.response?.data?.error) {
-        setError(error.response.data.error);
-      } else if (error.message) {
-        setError(error.message);
-      } else {
-        setError('Login failed. Please check your credentials and try again.');
+        const errorData = error.response?.data;
+        if (typeof errorData?.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (errorData?.error?.message) {
+          errorMessage = errorData.error.message;
+        } else {
+          errorMessage = 'Invalid email or password. Please check and try again.';
+        }
+      } else if (error.response?.data) {
+        const errorData = error.response.data;
+        if (typeof errorData.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        } else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+      } else if (error.message && typeof error.message === 'string') {
+        errorMessage = error.message;
       }
       
-      // Ensure we don't proceed on error
+      setError(errorMessage);
       setLoading(false);
     }
   };
