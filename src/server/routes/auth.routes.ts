@@ -560,7 +560,7 @@ router.get('/google', (req: Request, res: Response) => {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - prioritize FRONTEND_URL, then VERCEL_URL
+      // Production - prioritize FRONTEND_URL, then VERCEL_URL, then request headers
       let baseUrl: string;
       if (process.env.FRONTEND_URL) {
         baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
@@ -570,7 +570,12 @@ router.get('/google', (req: Request, res: Response) => {
         // Try to get from request headers as fallback
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = req.headers['x-forwarded-host'] || req.headers.host;
-        baseUrl = `${protocol}://${host}`;
+        if (host) {
+          baseUrl = `${protocol}://${host}`;
+        } else {
+          // Last resort - use hardcoded production URL
+          baseUrl = 'https://jits-coding-platform.vercel.app';
+        }
       }
       redirectUri = `${baseUrl}/api/auth/google/callback`;
     }
@@ -656,7 +661,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - use same logic as initial request
+      // Production - use same logic as initial request (MUST MATCH EXACTLY)
       let baseUrl: string;
       if (process.env.FRONTEND_URL) {
         baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
@@ -666,7 +671,12 @@ router.get('/google/callback', async (req: Request, res: Response) => {
         // Try to get from request headers as fallback
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const host = req.headers['x-forwarded-host'] || req.headers.host;
-        baseUrl = `${protocol}://${host}`;
+        if (host) {
+          baseUrl = `${protocol}://${host}`;
+        } else {
+          // Last resort - use hardcoded production URL (must match Google Console)
+          baseUrl = 'https://jits-coding-platform.vercel.app';
+        }
       }
       redirectUri = `${baseUrl}/api/auth/google/callback`;
     }
