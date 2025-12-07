@@ -262,10 +262,29 @@ export default function CodingEnvironment() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading event data...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Failed to load event data</p>
+          <button
+            onClick={() => navigate('/student/dashboard')}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
@@ -359,10 +378,12 @@ export default function CodingEnvironment() {
                 value={code}
                 onChange={(value) => setCode(value || '')}
                 theme="vs-dark"
+                loading={<div className="flex items-center justify-center h-full text-gray-600">Loading editor...</div>}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
                   wordWrap: 'on',
+                  automaticLayout: true,
                 }}
               />
             </div>
