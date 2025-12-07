@@ -35,8 +35,14 @@ export default function CompleteStudentProfile() {
 
     if (!formData.htNo.trim()) {
       newErrors.htNo = 'Hall Ticket Number is required';
-    } else if (!/^22271A\d{4}$|^22271A\d{2}[A-Z]\d$/.test(formData.htNo)) {
-      newErrors.htNo = 'Invalid Hall Ticket Number format';
+    } else {
+      const htNo = formData.htNo.trim().toUpperCase();
+      // Simple validation: 10 characters, "27" at positions 3-4 (0-indexed: 2-3)
+      if (htNo.length !== 10) {
+        newErrors.htNo = 'Hall Ticket Number must be exactly 10 characters';
+      } else if (htNo.charAt(2) !== '2' || htNo.charAt(3) !== '7') {
+        newErrors.htNo = 'Invalid format: Characters at positions 3-4 must be "27"';
+      }
     }
 
     if (!formData.year) {
@@ -91,9 +97,9 @@ export default function CompleteStudentProfile() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Complete Your Profile</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Complete Your Registration</h2>
         <p className="text-gray-600 mb-6 text-center text-sm">
-          Please provide your student details to continue
+          Please provide your student details to complete your registration
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,7 +138,7 @@ export default function CompleteStudentProfile() {
               maxLength={10}
             />
             {errors.htNo && <p className="text-red-500 text-xs mt-1">{errors.htNo}</p>}
-            <p className="text-gray-500 text-xs mt-1">Format: 22271A#### or 22271A##X#</p>
+            <p className="text-gray-500 text-xs mt-1">Must be 10 characters with "27" at positions 3-4</p>
           </div>
 
           <div>

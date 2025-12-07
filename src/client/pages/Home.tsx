@@ -30,7 +30,7 @@ export default function Home() {
             {!isAuthenticated ? (
               <>
                 <Link
-                  to="/student/register"
+                  to="/student/login"
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
                 >
                   Get Started

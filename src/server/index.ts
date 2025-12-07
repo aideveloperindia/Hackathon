@@ -12,7 +12,7 @@ import submissionRoutes from './routes/submission.routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 
 // Export prisma for routes (using singleton from utils/prisma.ts)
 export { prisma };

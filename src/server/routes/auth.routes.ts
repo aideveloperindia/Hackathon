@@ -121,7 +121,7 @@ router.post(
       // Generate verification URL for logging
       const baseUrl = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}`
-        : (process.env.FRONTEND_URL || 'http://localhost:3001');
+        : (process.env.FRONTEND_URL || 'http://localhost:5001');
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
 
       // Send verification email (non-blocking - don't fail registration if email fails)
@@ -375,7 +375,7 @@ router.post('/student/resend-verification', async (req: Request, res: Response) 
     // Generate verification URL for response
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}`
-      : (process.env.FRONTEND_URL || 'http://localhost:3001');
+      : (process.env.FRONTEND_URL || 'http://localhost:5001');
     const verificationUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
 
     // Send email
@@ -538,28 +538,39 @@ router.post(
 
 // Google OAuth - Initiate login
 router.get('/google', (req: Request, res: Response) => {
-  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-  
-  if (!GOOGLE_CLIENT_ID) {
-    return res.status(500).json({ error: 'Google OAuth not configured' });
-  }
+  try {
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    
+    console.log('🔍 OAuth /google endpoint called');
+    console.log('   GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? `${GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET');
+    
+    if (!GOOGLE_CLIENT_ID) {
+      console.error('❌ GOOGLE_CLIENT_ID not configured');
+      return res.status(500).json({ error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID environment variable.' });
+    }
 
-  // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
-  // Use FRONTEND_URL (fixed production URL) if set, otherwise use VERCEL_URL or localhost
-  let redirectUri: string;
-  
-  if (process.env.FRONTEND_URL) {
-    // Fixed production URL (preferred - set this in Vercel env vars)
-    // Remove trailing slash if present
-    const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
-    redirectUri = `${baseUrl}/api/auth/google/callback`;
-  } else if (process.env.VERCEL_URL) {
-    // Fallback to dynamic Vercel URL
-    redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
-  } else {
-    // Local development
-    redirectUri = 'http://localhost:3001/api/auth/google/callback';
-  }
+    // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
+    // For local development, always use localhost:5001 (frontend port)
+    // For production, use FRONTEND_URL or VERCEL_URL
+    let redirectUri: string;
+    
+    // Check if we're in local development (no FRONTEND_URL or VERCEL_URL)
+    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL;
+    
+    if (isLocalDev) {
+      // Local development - ALWAYS use localhost:5001 (frontend port)
+      redirectUri = 'http://localhost:5001/api/auth/google/callback';
+    } else if (process.env.FRONTEND_URL) {
+      // Production - use FRONTEND_URL
+      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+      redirectUri = `${baseUrl}/api/auth/google/callback`;
+    } else if (process.env.VERCEL_URL) {
+      // Fallback to dynamic Vercel URL
+      redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
+    } else {
+      // Final fallback
+      redirectUri = 'http://localhost:5001/api/auth/google/callback';
+    }
   
   // Allow override from query parameter
   if (req.query.redirect_uri) {
@@ -586,10 +597,17 @@ router.get('/google', (req: Request, res: Response) => {
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-  console.log('🔗 OAuth redirect URI:', redirectUri);
-  console.log('🔗 OAuth URL:', googleAuthUrl.substring(0, 100) + '...');
+    console.log('🔗 OAuth redirect URI:', redirectUri);
+    console.log('🔗 OAuth URL:', googleAuthUrl.substring(0, 100) + '...');
 
-  res.redirect(googleAuthUrl);
+    res.redirect(googleAuthUrl);
+  } catch (error: any) {
+    console.error('❌ Error in /google endpoint:', error);
+    res.status(500).json({ 
+      error: 'Failed to initiate OAuth login',
+      message: error.message 
+    });
+  }
 });
 
 // Google OAuth - Callback handler
@@ -601,7 +619,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     } else if (process.env.VERCEL_URL) {
       return `https://${process.env.VERCEL_URL}`;
     } else {
-      return 'http://localhost:3001';
+      return 'http://localhost:5001';
     }
   };
 
@@ -619,20 +637,26 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     }
 
     // Exchange code for tokens - must match the redirect URI used in the initial request EXACTLY
-    // Use FRONTEND_URL (fixed production URL) if set, otherwise use VERCEL_URL or localhost
+    // For local development, always use localhost:5001 (frontend port)
+    // For production, use FRONTEND_URL or VERCEL_URL
     let redirectUri: string;
     
-    if (process.env.FRONTEND_URL) {
-      // Fixed production URL (preferred - set this in Vercel env vars)
-      // Remove trailing slash if present
+    // Check if we're in local development (no FRONTEND_URL or VERCEL_URL)
+    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL;
+    
+    if (isLocalDev) {
+      // Local development - ALWAYS use localhost:5001 (frontend port)
+      redirectUri = 'http://localhost:5001/api/auth/google/callback';
+    } else if (process.env.FRONTEND_URL) {
+      // Production - use FRONTEND_URL
       const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
       redirectUri = `${baseUrl}/api/auth/google/callback`;
     } else if (process.env.VERCEL_URL) {
       // Fallback to dynamic Vercel URL
       redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
     } else {
-      // Local development
-      redirectUri = 'http://localhost:3001/api/auth/google/callback';
+      // Final fallback
+      redirectUri = 'http://localhost:5001/api/auth/google/callback';
     }
     
     // Ensure no trailing slash and exact format
