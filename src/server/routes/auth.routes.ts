@@ -594,20 +594,28 @@ router.get('/google', (req: Request, res: Response) => {
 
 // Google OAuth - Callback handler
 router.get('/google/callback', async (req: Request, res: Response) => {
+  // Helper function to get consistent frontend URL (used throughout this callback)
+  const getFrontendUrl = (): string => {
+    if (process.env.FRONTEND_URL) {
+      return process.env.FRONTEND_URL.replace(/\/$/, '');
+    } else if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    } else {
+      return 'http://localhost:3001';
+    }
+  };
+
   try {
     const { code, state } = req.query;
     const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
     const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
     if (!code) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=oauth_cancelled`);
+      return res.redirect(`${getFrontendUrl()}/student/login?error=oauth_cancelled`);
     }
 
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      const frontendUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}`
-        : (process.env.FRONTEND_URL || 'http://localhost:3001');
-      return res.redirect(`${frontendUrl}/student/login?error=oauth_not_configured`);
+      return res.redirect(`${getFrontendUrl()}/student/login?error=oauth_not_configured`);
     }
 
     // Exchange code for tokens - must match the redirect URI used in the initial request EXACTLY
@@ -675,12 +683,12 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     const { email, name, picture, verified_email } = userInfoResponse.data;
 
     if (!email) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=no_email`);
+      return res.redirect(`${getFrontendUrl()}/student/login?error=no_email`);
     }
 
     // Check if email is verified by Google
     if (!verified_email) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=email_not_verified`);
+      return res.redirect(`${getFrontendUrl()}/student/login?error=email_not_verified`);
     }
 
     // Find or create student account
@@ -744,7 +752,10 @@ router.get('/google/callback', async (req: Request, res: Response) => {
 
     if (!student || !student.masterStudent) {
       console.error('❌ Student or masterStudent not found after OAuth login');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/student/login?error=student_not_found`);
+      const frontendUrl = process.env.FRONTEND_URL 
+        ? process.env.FRONTEND_URL.replace(/\/$/, '')
+        : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3001');
+      return res.redirect(`${frontendUrl}/student/login?error=student_not_found`);
     }
 
     // Check if student needs to complete profile
@@ -768,10 +779,16 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       htNo: student.masterStudent.htNo,
     });
 
-    // Redirect to frontend with token
-    const frontendUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : (process.env.FRONTEND_URL || 'http://localhost:3001');
+    // Redirect to frontend with token - use FRONTEND_URL consistently
+    // This must match the base URL used for the redirect URI
+    let frontendUrl: string;
+    if (process.env.FRONTEND_URL) {
+      frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+    } else if (process.env.VERCEL_URL) {
+      frontendUrl = `https://${process.env.VERCEL_URL}`;
+    } else {
+      frontendUrl = 'http://localhost:3001';
+    }
     
     if (needsProfileCompletion) {
       res.redirect(`${frontendUrl}/auth/callback?token=${token}&email=${encodeURIComponent(email)}&completeProfile=true`);
@@ -780,7 +797,17 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    console.error('Error details:', error.response?.data || error.message);
+    
+    // Use consistent frontend URL for error redirects
+    let frontendUrl: string;
+    if (process.env.FRONTEND_URL) {
+      frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+    } else if (process.env.VERCEL_URL) {
+      frontendUrl = `https://${process.env.VERCEL_URL}`;
+    } else {
+      frontendUrl = 'http://localhost:3001';
+    }
     res.redirect(`${frontendUrl}/student/login?error=oauth_failed`);
   }
 });
