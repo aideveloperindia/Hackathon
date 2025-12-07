@@ -188,44 +188,67 @@ router.post(
   ],
   async (req: Request, res: Response) => {
     try {
+      console.log('🔍 HT Login attempt:', { htNo: req.body.htNo, phoneNumber: req.body.phoneNumber ? '***' : 'missing' });
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('❌ Validation errors:', errors.array());
         return res.status(400).json({ errors: errors.array() });
       }
 
       const { htNo, phoneNumber } = req.body;
       const trimmedHtNo = htNo.trim().toUpperCase();
+      const trimmedPhone = phoneNumber.trim();
+
+      console.log('📋 Processing login for:', { htNo: trimmedHtNo, phoneLength: trimmedPhone.length });
 
       // Allowed HT Numbers (the 4 team users)
       const allowedHtNos = ['22271A6651', '22271A6652', '22271A6629', '232275A6601'];
       
       if (!allowedHtNos.includes(trimmedHtNo)) {
+        console.log('❌ HT No not in allowed list:', trimmedHtNo);
         return res.status(403).json({ error: 'Access denied. Invalid Hall Ticket Number.' });
       }
 
       // Find master student by HT No
+      console.log('🔍 Looking up master student...');
       const masterStudent = await prisma.masterStudent.findUnique({
         where: { htNo: trimmedHtNo },
         include: { student: true },
       });
 
       if (!masterStudent) {
+        console.log('❌ Master student not found:', trimmedHtNo);
         return res.status(401).json({ error: 'Hall Ticket Number not found.' });
       }
 
+      console.log('✅ Master student found:', { 
+        htNo: masterStudent.htNo, 
+        name: masterStudent.name,
+        phoneNumber: masterStudent.phoneNumber,
+        hasStudent: !!masterStudent.student 
+      });
+
       // Verify phone number matches
-      if (masterStudent.phoneNumber !== phoneNumber.trim()) {
+      if (masterStudent.phoneNumber !== trimmedPhone) {
+        console.log('❌ Phone number mismatch:', { 
+          expected: masterStudent.phoneNumber, 
+          received: trimmedPhone 
+        });
         return res.status(401).json({ error: 'Invalid phone number. Please check and try again.' });
       }
 
       // Check if student account exists
       if (!masterStudent.student) {
+        console.log('❌ No student account found for HT:', trimmedHtNo);
         return res.status(401).json({ error: 'No account found. Please contact support.' });
       }
 
       const student = masterStudent.student;
+      console.log('✅ Student account found:', { id: student.id, email: student.email });
 
       // Generate token
+      console.log('🔑 Generating token...');
       const token = generateToken({
         userId: student.id,
         email: student.email,
@@ -251,8 +274,17 @@ router.post(
         },
       });
     } catch (error: any) {
-      console.error('HT Login error:', error);
-      res.status(500).json({ error: 'Login failed. Please try again.' });
+      console.error('❌ HT Login error:', error);
+      console.error('   Error name:', error?.name);
+      console.error('   Error message:', error?.message);
+      console.error('   Error stack:', error?.stack);
+      res.status(500).json({ 
+        error: 'Login failed. Please try again.',
+        ...(process.env.NODE_ENV === 'development' && { 
+          details: error?.message,
+          stack: error?.stack 
+        })
+      });
     }
   }
 );
