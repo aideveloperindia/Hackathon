@@ -54,3 +54,4 @@ backend/prisma/migrations/
 .vercel
 google_oauth_credentials.txt
 .env.production
+.env*.local
