@@ -92,13 +92,23 @@ export default function CodingEnvironment() {
   }, [selectedQuestion, code, eventId, event?.language, moveToNextQuestion]);
 
   const fetchEventData = useCallback(async () => {
+    if (!eventId) {
+      console.error('No eventId provided');
+      navigate('/student/dashboard');
+      return;
+    }
+    
     setLoading(true);
     try {
+      console.log('Fetching event data for eventId:', eventId);
       const response = await api.get(`/events/${eventId}`);
+      console.log('Event response:', response.data);
       const eventData = response.data.event;
       
       if (!eventData) {
+        console.error('Event data not found in response');
         alert('Event not found');
+        setLoading(false);
         navigate('/student/dashboard');
         return;
       }
@@ -114,6 +124,8 @@ export default function CodingEnvironment() {
         const savedCode = localStorage.getItem(`code_${eventId}_${firstQuestion.id}`);
         if (savedCode) {
           setCode(savedCode);
+        } else {
+          setCode(''); // Initialize with empty string
         }
         
         // Start timer for first question
@@ -130,16 +142,22 @@ export default function CodingEnvironment() {
           const elapsed = storedStartTime ? Math.floor((Date.now() - parseInt(storedStartTime)) / 1000) : 0;
           const timeLimitSeconds = firstQuestion.timeLimitMinutes * 60;
           setRemainingTime(Math.max(0, timeLimitSeconds - elapsed));
+        } else {
+          setRemainingTime(null);
         }
       } else {
         alert('This event has no questions yet. Please contact the administrator.');
+        setLoading(false);
         navigate('/student/dashboard');
+        return;
       }
     } catch (error: any) {
       console.error('Error fetching event:', error);
+      console.error('Error response:', error.response);
       const errorMessage = error.response?.data?.error || 'Failed to load event';
       alert(errorMessage);
-      navigate('/student/dashboard');
+      setLoading(false);
+      // Don't navigate immediately, let user see the error
     } finally {
       setLoading(false);
     }
