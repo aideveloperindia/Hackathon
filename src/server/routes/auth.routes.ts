@@ -550,30 +550,33 @@ router.get('/google', (req: Request, res: Response) => {
     }
 
     // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
-    // For local development, always use localhost:5001 (frontend port)
-    // For production, use FRONTEND_URL or VERCEL_URL
+    // For production, we need to use the actual deployed URL
     let redirectUri: string;
     
-    // Check if we're in local development (no FRONTEND_URL or VERCEL_URL)
-    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL;
+    // Check if we're in local development
+    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
     
     if (isLocalDev) {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
-    } else if (process.env.FRONTEND_URL) {
-      // Production - use FRONTEND_URL
-      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
-      redirectUri = `${baseUrl}/api/auth/google/callback`;
-    } else if (process.env.VERCEL_URL) {
-      // Fallback to dynamic Vercel URL
-      redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
     } else {
-      // Final fallback
-      redirectUri = 'http://localhost:5001/api/auth/google/callback';
+      // Production - prioritize FRONTEND_URL, then VERCEL_URL
+      let baseUrl: string;
+      if (process.env.FRONTEND_URL) {
+        baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+      } else if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+      } else {
+        // Try to get from request headers as fallback
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        baseUrl = `${protocol}://${host}`;
+      }
+      redirectUri = `${baseUrl}/api/auth/google/callback`;
     }
   
-  // Allow override from query parameter
-  if (req.query.redirect_uri) {
+  // Allow override from query parameter (for testing)
+  if (req.query.redirect_uri && process.env.NODE_ENV === 'development') {
     redirectUri = req.query.redirect_uri as string;
   }
   
@@ -597,8 +600,14 @@ router.get('/google', (req: Request, res: Response) => {
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-    console.log('🔗 OAuth redirect URI:', redirectUri);
-    console.log('🔗 OAuth URL:', googleAuthUrl.substring(0, 100) + '...');
+    console.log('🔗 OAuth Configuration:');
+    console.log('   Redirect URI:', redirectUri);
+    console.log('   FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
+    console.log('   VERCEL_URL:', process.env.VERCEL_URL || 'NOT SET');
+    console.log('   NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
+    console.log('   Request Host:', req.headers.host);
+    console.log('   X-Forwarded-Host:', req.headers['x-forwarded-host']);
+    console.log('   X-Forwarded-Proto:', req.headers['x-forwarded-proto']);
 
     res.redirect(googleAuthUrl);
   } catch (error: any) {
@@ -637,26 +646,29 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     }
 
     // Exchange code for tokens - must match the redirect URI used in the initial request EXACTLY
-    // For local development, always use localhost:5001 (frontend port)
-    // For production, use FRONTEND_URL or VERCEL_URL
+    // This MUST be identical to what was sent in the initial OAuth request
     let redirectUri: string;
     
-    // Check if we're in local development (no FRONTEND_URL or VERCEL_URL)
-    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL;
+    // Check if we're in local development
+    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
     
     if (isLocalDev) {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
-    } else if (process.env.FRONTEND_URL) {
-      // Production - use FRONTEND_URL
-      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
-      redirectUri = `${baseUrl}/api/auth/google/callback`;
-    } else if (process.env.VERCEL_URL) {
-      // Fallback to dynamic Vercel URL
-      redirectUri = `https://${process.env.VERCEL_URL}/api/auth/google/callback`;
     } else {
-      // Final fallback
-      redirectUri = 'http://localhost:5001/api/auth/google/callback';
+      // Production - use same logic as initial request
+      let baseUrl: string;
+      if (process.env.FRONTEND_URL) {
+        baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+      } else if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+      } else {
+        // Try to get from request headers as fallback
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        baseUrl = `${protocol}://${host}`;
+      }
+      redirectUri = `${baseUrl}/api/auth/google/callback`;
     }
     
     // Ensure no trailing slash and exact format
@@ -674,6 +686,11 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     console.log('🔄 Exchanging OAuth code for token...');
     console.log('   Redirect URI:', redirectUri);
     console.log('   Client ID:', GOOGLE_CLIENT_ID?.substring(0, 20) + '...');
+    console.log('   FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
+    console.log('   VERCEL_URL:', process.env.VERCEL_URL || 'NOT SET');
+    console.log('   Request Host:', req.headers.host);
+    console.log('   X-Forwarded-Host:', req.headers['x-forwarded-host']);
+    console.log('   X-Forwarded-Proto:', req.headers['x-forwarded-proto']);
 
     let tokenResponse;
     try {
