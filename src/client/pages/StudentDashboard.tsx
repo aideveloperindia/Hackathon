@@ -27,15 +27,22 @@ export default function StudentDashboard() {
       
       // Check if student needs to complete profile
       const student = response.data?.student;
+      console.log('Dashboard student data:', student);
+      
       if (student && (
         student.htNo?.startsWith('OAUTH-') ||
         student.branch === 'OAuth' ||
         !student.phoneNumber
       )) {
         console.log('Redirecting to complete-profile - incomplete profile detected');
-        navigate('/complete-profile');
+        console.log('  - HT No:', student.htNo);
+        console.log('  - Branch:', student.branch);
+        console.log('  - Phone:', student.phoneNumber);
+        navigate('/complete-profile', { replace: true });
         return;
       }
+      
+      console.log('✅ Profile is complete, showing dashboard');
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {

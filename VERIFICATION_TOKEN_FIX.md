@@ -72,3 +72,4 @@ Each time you click "Resend", a new token is generated for security reasons.
 
 **Remember: Always use the link from the most recent "Resend" click!**
 
+

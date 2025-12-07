@@ -44,3 +44,4 @@ https://jits-coding-platform.vercel.app/api/auth/google/callback
 2. Try logging in again
 3. The redirect_uri_mismatch error should be resolved
 
+

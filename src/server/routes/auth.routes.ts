@@ -866,6 +866,22 @@ router.post('/complete-profile', authenticate, requireStudent, [
 
     const trimmedHtNo = htNo.trim().toUpperCase();
     
+    console.log('🔍 Complete profile request:');
+    console.log('  - Student ID:', studentId);
+    console.log('  - Current HT No:', student.masterStudent.htNo);
+    console.log('  - New HT No:', trimmedHtNo);
+    
+    // Validate HT number format: 10 characters, "27" at positions 3-4 (0-indexed: 2-3)
+    if (!trimmedHtNo || trimmedHtNo.length !== 10) {
+      return res.status(400).json({ error: 'Hall Ticket Number must be exactly 10 characters long' });
+    }
+
+    if (trimmedHtNo.charAt(2) !== '2' || trimmedHtNo.charAt(3) !== '7') {
+      return res.status(400).json({
+        error: 'Invalid Hall Ticket Number. College code "27" must be at positions 3-4 (e.g., 22271A0660)'
+      });
+    }
+    
     // Check if HT number is already taken by another student
     const existingMasterStudent = await prisma.masterStudent.findUnique({
       where: { htNo: trimmedHtNo },
@@ -874,59 +890,47 @@ router.post('/complete-profile', authenticate, requireStudent, [
 
     // If HT number exists and is linked to a different student account, reject
     if (existingMasterStudent && existingMasterStudent.student && existingMasterStudent.student.id !== studentId) {
+      console.log('❌ HT number already taken by different student');
       return res.status(400).json({ error: 'This Hall Ticket Number is already registered to another account' });
     }
 
-    // Update or create master student record
+    console.log('✅ HT number validation passed - proceeding to save');
+    
+    // Simple: just save the details - NO RESTRICTIONS ON CHANGING HT NUMBER
     let masterStudent;
-    if (student.masterStudent.htNo.startsWith('OAUTH-')) {
-      // OAuth user completing profile - update temporary master student or link to existing
-      if (existingMasterStudent && !existingMasterStudent.student) {
-        // HT number exists but not linked to any student - link this student to it
-        await prisma.student.update({
-          where: { id: studentId },
-          data: {
-            masterStudentId: existingMasterStudent.id,
-          },
-        });
-        // Delete the temporary master student
+    
+    if (existingMasterStudent && !existingMasterStudent.student) {
+      // HT number exists but not linked - link this student to it
+      await prisma.student.update({
+        where: { id: studentId },
+        data: {
+          masterStudentId: existingMasterStudent.id,
+        },
+      });
+      // Delete old master student if it was temporary
+      if (student.masterStudent.htNo.startsWith('OAUTH-')) {
         await prisma.masterStudent.delete({
           where: { id: student.masterStudentId },
         });
-        // Update the existing master student with new details
-        masterStudent = await prisma.masterStudent.update({
-          where: { id: existingMasterStudent.id },
-          data: {
-            name: name.trim(),
-            year: parseInt(year),
-            section: section.toUpperCase(),
-            phoneNumber: phoneNumber.trim(),
-            branch: (branch || 'CSE').toUpperCase(),
-          },
-        });
-      } else {
-        // Update existing temporary master student with real HT number
-        masterStudent = await prisma.masterStudent.update({
-          where: { id: student.masterStudentId },
-          data: {
-            htNo: trimmedHtNo,
-            name: name.trim(),
-            year: parseInt(year),
-            section: section.toUpperCase(),
-            phoneNumber: phoneNumber.trim(),
-            branch: (branch || 'CSE').toUpperCase(),
-          },
-        });
       }
+      // Update the master student with new details
+      masterStudent = await prisma.masterStudent.update({
+        where: { id: existingMasterStudent.id },
+        data: {
+          htNo: trimmedHtNo,
+          name: name.trim(),
+          year: parseInt(year),
+          section: section.toUpperCase(),
+          phoneNumber: phoneNumber.trim(),
+          branch: (branch || 'CSE').toUpperCase(),
+        },
+      });
     } else {
-      // Existing student updating profile - only update if HT number matches
-      if (student.masterStudent.htNo !== trimmedHtNo) {
-        return res.status(400).json({ error: 'Cannot change Hall Ticket Number. Please contact support.' });
-      }
-      // Update existing master student
+      // Update existing master student with new details
       masterStudent = await prisma.masterStudent.update({
         where: { id: student.masterStudentId },
         data: {
+          htNo: trimmedHtNo,
           name: name.trim(),
           year: parseInt(year),
           section: section.toUpperCase(),

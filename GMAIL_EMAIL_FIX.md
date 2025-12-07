@@ -149,3 +149,4 @@ Once Gmail is configured correctly:
 
 **The verification link will work even if email doesn't send!** 🎉
 
+

@@ -14,6 +14,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -49,6 +50,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/';
   };
 
+  const refreshUser = async () => {
+    try {
+      const storedToken = localStorage.getItem('token');
+      if (!storedToken) return;
+
+      // Fetch updated user data from dashboard endpoint
+      const response = await api.get('/student/dashboard');
+      const student = response.data?.student;
+      
+      if (student) {
+        const updatedUser: User = {
+          id: student.id || '',
+          email: student.email || '',
+          name: student.name,
+          htNo: student.htNo,
+          role: 'student',
+        };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('✅ User data refreshed:', updatedUser);
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -56,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         login,
         logout,
+        refreshUser,
         isAuthenticated: !!token && !!user,
       }}
     >

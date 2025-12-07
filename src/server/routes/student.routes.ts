@@ -156,11 +156,14 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
     res.json({
       student: {
+        id: student.id,
+        email: student.email,
         name: student.masterStudent.name,
         htNo: student.masterStudent.htNo,
         branch: student.masterStudent.branch,
         section: student.masterStudent.section,
         year: student.masterStudent.year,
+        phoneNumber: student.masterStudent.phoneNumber,
       },
       stats: {
         eventsParticipated: eventCount,

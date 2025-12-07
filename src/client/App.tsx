@@ -14,6 +14,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import AuthCallback from './pages/AuthCallback';
 import ConductEvent from './pages/ConductEvent';
 import CompleteStudentProfile from './pages/CompleteStudentProfile';
+import Footer from './components/Footer';
 
 function PrivateRoute({ children, requireRole }: { children: React.ReactNode; requireRole?: 'student' | 'admin' }) {
   const { isAuthenticated, user } = useAuth();
@@ -43,72 +44,77 @@ function App() {
           v7_relativeSplatPath: true,
         }}
       >
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/student/register" element={<StudentRegister />} />
-          <Route path="/student/login" element={<StudentLogin />} />
-          <Route path="/admin/register" element={<AdminRegister />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          
-          <Route
-            path="/complete-profile"
-            element={
-              <PrivateRoute requireRole="student">
-                <CompleteStudentProfile />
-              </PrivateRoute>
-            }
-          />
-          
-          <Route
-            path="/select-language"
-            element={
-              <PrivateRoute requireRole="student">
-                <LanguageSelection />
-              </PrivateRoute>
-            }
-          />
-          
-          <Route
-            path="/student/dashboard"
-            element={
-              <PrivateRoute requireRole="student">
-                <StudentDashboard />
-              </PrivateRoute>
-            }
-          />
-          
-          <Route
-            path="/coding/:eventId"
-            element={
-              <PrivateRoute requireRole="student">
-                <CodingEnvironment />
-              </PrivateRoute>
-            }
-          />
-          
-          <Route
-            path="/admin/dashboard"
-            element={
-              <PrivateRoute requireRole="admin">
-                <AdminDashboard />
-              </PrivateRoute>
-            }
-          />
-          
-          <Route
-            path="/admin/conduct-event"
-            element={
-              <PrivateRoute requireRole="admin">
-                <ConductEvent />
-              </PrivateRoute>
-            }
-          />
-          
-          <Route path="/leaderboard/:eventId" element={<Leaderboard />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-        </Routes>
+        <div className="min-h-screen flex flex-col">
+          <div className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/student/register" element={<StudentRegister />} />
+              <Route path="/student/login" element={<StudentLogin />} />
+              <Route path="/admin/register" element={<AdminRegister />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              <Route
+                path="/complete-profile"
+                element={
+                  <PrivateRoute requireRole="student">
+                    <CompleteStudentProfile />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/select-language"
+                element={
+                  <PrivateRoute requireRole="student">
+                    <LanguageSelection />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/student/dashboard"
+                element={
+                  <PrivateRoute requireRole="student">
+                    <StudentDashboard />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/coding/:eventId"
+                element={
+                  <PrivateRoute requireRole="student">
+                    <CodingEnvironment />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <PrivateRoute requireRole="admin">
+                    <AdminDashboard />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/admin/conduct-event"
+                element={
+                  <PrivateRoute requireRole="admin">
+                    <ConductEvent />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route path="/leaderboard/:eventId" element={<Leaderboard />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+            </Routes>
+          </div>
+          <Footer />
+        </div>
       </Router>
     </AuthProvider>
   );

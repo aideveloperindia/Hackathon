@@ -5,7 +5,7 @@ import api from '../utils/api';
 
 export default function CompleteStudentProfile() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     htNo: '',
@@ -75,7 +75,7 @@ export default function CompleteStudentProfile() {
     setLoading(true);
 
     try {
-      await api.post('/auth/complete-profile', {
+      const response = await api.post('/auth/complete-profile', {
         name: formData.name.trim(),
         htNo: formData.htNo.trim().toUpperCase(),
         year: parseInt(formData.year),
@@ -84,8 +84,17 @@ export default function CompleteStudentProfile() {
         branch: formData.branch,
       });
 
-      // Refresh user data
-      window.location.href = '/student/dashboard';
+      console.log('✅ Profile saved successfully, refreshing user data...');
+      
+      // Refresh user data from server
+      await refreshUser();
+      
+      // Small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('✅ Navigating to dashboard...');
+      // Navigate to dashboard
+      navigate('/student/dashboard', { replace: true });
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || 'Failed to save profile. Please try again.';
       alert(errorMessage);

@@ -34,3 +34,4 @@ echo "Note: Email is optional. Registration will work even without email configu
 echo "      In development, verification URLs will be logged to the console."
 
 
+
