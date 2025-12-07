@@ -179,7 +179,85 @@ router.post(
   }
 );
 
-// Student Login
+// Student Login with HT No and Phone Number (for team users)
+router.post(
+  '/student/login-ht',
+  [
+    body('htNo').trim().notEmpty().withMessage('Hall Ticket Number is required'),
+    body('phoneNumber').trim().notEmpty().withMessage('Phone Number is required'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { htNo, phoneNumber } = req.body;
+      const trimmedHtNo = htNo.trim().toUpperCase();
+
+      // Allowed HT Numbers (the 4 team users)
+      const allowedHtNos = ['22271A6651', '22271A6652', '22271A6629', '232275A6601'];
+      
+      if (!allowedHtNos.includes(trimmedHtNo)) {
+        return res.status(403).json({ error: 'Access denied. Invalid Hall Ticket Number.' });
+      }
+
+      // Find master student by HT No
+      const masterStudent = await prisma.masterStudent.findUnique({
+        where: { htNo: trimmedHtNo },
+        include: { student: true },
+      });
+
+      if (!masterStudent) {
+        return res.status(401).json({ error: 'Hall Ticket Number not found.' });
+      }
+
+      // Verify phone number matches
+      if (masterStudent.phoneNumber !== phoneNumber.trim()) {
+        return res.status(401).json({ error: 'Invalid phone number. Please check and try again.' });
+      }
+
+      // Check if student account exists
+      if (!masterStudent.student) {
+        return res.status(401).json({ error: 'No account found. Please contact support.' });
+      }
+
+      const student = masterStudent.student;
+
+      // Generate token
+      const token = generateToken({
+        userId: student.id,
+        email: student.email,
+        role: 'student',
+        htNo: masterStudent.htNo,
+      });
+
+      console.log(`✅ HT Login successful for ${trimmedHtNo}`);
+
+      res.json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: student.id,
+          email: student.email,
+          htNo: masterStudent.htNo,
+          name: masterStudent.name,
+          branch: masterStudent.branch,
+          section: masterStudent.section,
+          year: masterStudent.year,
+          phoneNumber: masterStudent.phoneNumber,
+          role: 'student',
+        },
+      });
+    } catch (error: any) {
+      console.error('HT Login error:', error);
+      res.status(500).json({ error: 'Login failed. Please try again.' });
+    }
+  }
+);
+
+// Student Login (Original - with email/password)
 router.post(
   '/student/login',
   [
