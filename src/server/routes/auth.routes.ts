@@ -180,20 +180,13 @@ router.post(
 );
 
 // Student Login with HT No and Phone Number (for team users)
-router.post(
-  '/student/login-ht',
-  [
-    body('htNo').trim().notEmpty().withMessage('Hall Ticket Number is required'),
-    body('phoneNumber').trim().notEmpty().withMessage('Phone Number is required'),
-  ],
-  async (req: Request, res: Response) => {
+router.post('/student/login-ht',   async (req: Request, res: Response) => {
     try {
       console.log('🔍 HT Login attempt:', { htNo: req.body.htNo, phoneNumber: req.body.phoneNumber ? '***' : 'missing' });
       
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        console.log('❌ Validation errors:', errors.array());
-        return res.status(400).json({ errors: errors.array() });
+      // Simple validation
+      if (!req.body.htNo || !req.body.phoneNumber) {
+        return res.status(400).json({ error: 'Hall Ticket Number and Phone Number are required' });
       }
 
       const { htNo, phoneNumber } = req.body;
