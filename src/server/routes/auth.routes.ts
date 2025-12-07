@@ -248,12 +248,26 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
     console.log('✅ Student account exists');
 
     // Generate token
-    const token = generateToken({
+    console.log('🔑 Generating token with:', {
       userId: masterStudent.student.id,
       email: masterStudent.student.email,
       role: 'student',
       htNo: masterStudent.htNo,
     });
+    
+    let token;
+    try {
+      token = generateToken({
+        userId: masterStudent.student.id,
+        email: masterStudent.student.email,
+        role: 'student',
+        htNo: masterStudent.htNo,
+      });
+      console.log('✅ Token generated successfully');
+    } catch (tokenError: any) {
+      console.error('❌ Token generation error:', tokenError);
+      throw tokenError;
+    }
 
     console.log(`✅✅✅ LOGIN SUCCESSFUL FOR ${htNo} ✅✅✅`);
 
