@@ -253,40 +253,50 @@ router.post('/student/login-ht',   async (req: Request, res: Response) => {
 
       // Generate token
       console.log('🔑 Generating token...');
-      const token = generateToken({
-        userId: student.id,
-        email: student.email,
-        role: 'student',
-        htNo: masterStudent.htNo,
-      });
-
-      console.log(`✅ HT Login successful for ${trimmedHtNo}`);
-
-      res.json({
-        message: 'Login successful',
-        token,
-        user: {
-          id: student.id,
+      try {
+        const token = generateToken({
+          userId: student.id,
           email: student.email,
-          htNo: masterStudent.htNo,
-          name: masterStudent.name,
-          branch: masterStudent.branch,
-          section: masterStudent.section,
-          year: masterStudent.year,
-          phoneNumber: masterStudent.phoneNumber,
           role: 'student',
-        },
-      });
+          htNo: masterStudent.htNo,
+        });
+
+        console.log(`✅ HT Login successful for ${trimmedHtNo}`);
+
+        return res.json({
+          message: 'Login successful',
+          token,
+          user: {
+            id: student.id,
+            email: student.email,
+            htNo: masterStudent.htNo,
+            name: masterStudent.name,
+            branch: masterStudent.branch,
+            section: masterStudent.section,
+            year: masterStudent.year,
+            phoneNumber: masterStudent.phoneNumber,
+            role: 'student',
+          },
+        });
+      } catch (tokenError: any) {
+        console.error('❌ Token generation failed:', tokenError);
+        throw tokenError;
+      }
     } catch (error: any) {
       console.error('❌ HT Login error:', error);
       console.error('   Error name:', error?.name);
       console.error('   Error message:', error?.message);
       console.error('   Error stack:', error?.stack);
+      console.error('   Full error:', JSON.stringify(error, null, 2));
+      
+      // Return specific error message
+      const errorMessage = error?.message || 'Login failed. Please try again.';
       res.status(500).json({ 
-        error: 'Login failed. Please try again.',
+        error: errorMessage,
         ...(process.env.NODE_ENV === 'development' && { 
           details: error?.message,
-          stack: error?.stack 
+          stack: error?.stack,
+          name: error?.name
         })
       });
     }
