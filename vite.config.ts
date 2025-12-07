@@ -6,14 +6,8 @@ export default defineConfig({
   plugins: [react()],
   root: 'src/client',
   server: {
-    port: 5001,
-    host: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5002',
-        changeOrigin: true,
-      },
-    },
+    // In unified mode, Vite runs as middleware, so no proxy needed
+    middlewareMode: true,
   },
   build: {
     outDir: '../../dist/client',
