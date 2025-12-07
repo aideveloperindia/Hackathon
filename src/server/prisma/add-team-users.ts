@@ -57,24 +57,64 @@ async function main() {
     },
   ];
 
-  // Create master student records
+  // Create master student records and student accounts
   for (const user of teamUsers) {
-    const masterStudent = await prisma.masterStudent.create({
-      data: {
-        htNo: user.htNo,
-        name: user.name,
-        branch: user.branch,
-        section: user.section,
-        year: user.year,
-        phoneNumber: user.phoneNumber, // This will be added when they complete profile via Gmail
-      },
+    // Create or update master student
+    let masterStudent = await prisma.masterStudent.findUnique({
+      where: { htNo: user.htNo },
     });
-    console.log(`   ✅ Created master student: ${user.htNo} - ${user.name}`);
+
+    if (!masterStudent) {
+      masterStudent = await prisma.masterStudent.create({
+        data: {
+          htNo: user.htNo,
+          name: user.name,
+          branch: user.branch,
+          section: user.section,
+          year: user.year,
+          phoneNumber: user.phoneNumber,
+        },
+      });
+      console.log(`   ✅ Created master student: ${user.htNo} - ${user.name}`);
+    } else {
+      // Update phone number if needed
+      await prisma.masterStudent.update({
+        where: { htNo: user.htNo },
+        data: { phoneNumber: user.phoneNumber },
+      });
+      console.log(`   ✅ Updated master student: ${user.htNo} - ${user.name}`);
+    }
+
+    // Create student account if it doesn't exist
+    const existingStudent = await prisma.student.findUnique({
+      where: { masterStudentId: masterStudent.id },
+    });
+
+    if (!existingStudent) {
+      // Create a dummy email for the student account (HT-based)
+      const dummyEmail = `${user.htNo.toLowerCase()}@jits.local`;
+      const passwordHash = await hashPassword(user.phoneNumber); // Use phone number as password hash (for compatibility)
+
+      await prisma.student.create({
+        data: {
+          masterStudentId: masterStudent.id,
+          email: dummyEmail,
+          passwordHash: passwordHash,
+          isEmailVerified: true, // Auto-verified for team users
+          emailVerifyToken: null,
+          emailVerifyExpiry: null,
+        },
+      });
+      console.log(`   ✅ Created student account for: ${user.htNo}`);
+    } else {
+      console.log(`   ✅ Student account already exists for: ${user.htNo}`);
+    }
   }
 
   console.log(`\n✅ Successfully added ${teamUsers.length} team users`);
-  console.log('\n📝 Note: These users can login with Gmail and will be automatically');
-  console.log('   linked to their HT numbers when they complete their profile.');
+  console.log('\n📝 These users can now login with:');
+  console.log('   - Hall Ticket Number');
+  console.log('   - Phone Number (as password)');
 }
 
 main()
