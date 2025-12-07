@@ -576,12 +576,12 @@ router.get('/google', (req: Request, res: Response) => {
       redirectUri = 'https://jits-coding-platform-new.vercel.app/api/auth/google/callback';
     }
   
-  // Ensure no trailing slash and exact format
-  redirectUri = redirectUri.replace(/\/$/, '');
+    // Ensure no trailing slash and exact format
+    redirectUri = redirectUri.replace(/\/$/, '');
 
-  const scope = 'openid email profile';
-  const responseType = 'code';
-  const state = req.query.state as string || 'default';
+    const scope = 'openid email profile';
+    const responseType = 'code';
+    const state = req.query.state as string || 'default';
 
     // Build Google OAuth URL with proper encoding
     const params = new URLSearchParams({
