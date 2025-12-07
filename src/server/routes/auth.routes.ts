@@ -613,9 +613,14 @@ router.get('/google', (req: Request, res: Response) => {
     res.redirect(googleAuthUrl);
   } catch (error: any) {
     console.error('❌ Error in /google endpoint:', error);
+    console.error('   Error name:', error?.name);
+    console.error('   Error message:', error?.message);
+    console.error('   Error stack:', error?.stack);
+    console.error('   Error details:', JSON.stringify(error, null, 2));
     res.status(500).json({ 
       error: 'Failed to initiate OAuth login',
-      message: error.message 
+      message: error?.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
     });
   }
 });
