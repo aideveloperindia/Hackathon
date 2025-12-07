@@ -179,9 +179,10 @@ router.post(
   }
 );
 
-// Test endpoint
+// Test endpoint - SIMPLEST POSSIBLE
 router.get('/student/login-ht-test', (req: Request, res: Response) => {
-  res.json({ message: 'HT login route is working', status: 'ok' });
+  console.log('🔍 TEST ENDPOINT HIT');
+  res.status(200).json({ message: 'HT login route is working', status: 'ok' });
 });
 
 // Student Login with HT No and Phone Number (for team users)
