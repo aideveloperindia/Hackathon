@@ -63,10 +63,17 @@ async function startDevServer() {
     });
 
     // Use vite's connect instance as middleware (handle all non-API routes)
-    // IMPORTANT: API routes must be handled BEFORE Vite middleware
-    app.use(vite.middlewares);
+    // IMPORTANT: Check for /api routes FIRST, then pass to Vite for frontend
+    app.use((req, res, next) => {
+      // If it's an API route, let Express handle it (already registered above)
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      // Otherwise, let Vite handle it (React app)
+      vite.middlewares(req, res, next);
+    });
 
-    // Handle API 404s (after Vite middleware, but only for /api routes)
+    // Handle API 404s (only if API route wasn't matched)
     app.use('/api/*', (req, res) => {
       res.status(404).json({ error: 'API route not found' });
     });
