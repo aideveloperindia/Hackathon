@@ -187,6 +187,8 @@ router.get('/student/login-ht-test', (req: Request, res: Response) => {
 // Student Login with HT No and Phone Number (for team users)
 router.post('/student/login-ht', async (req: Request, res: Response) => {
   console.log('🔍 ===== HT LOGIN ENDPOINT CALLED =====');
+  console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+  console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length || 0);
   try {
     console.log('Request received');
     console.log('Request body:', JSON.stringify(req.body));
