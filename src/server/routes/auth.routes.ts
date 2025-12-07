@@ -600,11 +600,15 @@ router.get('/google', (req: Request, res: Response) => {
     console.log('   Redirect URI (EXACT):', redirectUri);
     console.log('   Redirect URI Length:', redirectUri.length);
     console.log('   Redirect URI Encoded:', encodeURIComponent(redirectUri));
-    console.log('   Full OAuth URL:', googleAuthUrl);
-    console.log('   Client ID (first 20 chars):', GOOGLE_CLIENT_ID?.substring(0, 20));
+    console.log('   Full OAuth URL (first 200 chars):', googleAuthUrl.substring(0, 200));
+    console.log('   Client ID (FULL):', GOOGLE_CLIENT_ID);
+    console.log('   Client ID Length:', GOOGLE_CLIENT_ID?.length);
+    console.log('   Client ID has spaces?', GOOGLE_CLIENT_ID?.includes(' ') ? 'YES ❌' : 'NO ✅');
     console.log('   FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
     console.log('   VERCEL_URL:', process.env.VERCEL_URL || 'NOT SET');
     console.log('   NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
+    console.log('   Scope:', scope);
+    console.log('   Response Type:', responseType);
 
     res.redirect(googleAuthUrl);
   } catch (error: any) {
