@@ -45,3 +45,4 @@ https://jits-coding-platform.vercel.app/api/auth/google/callback
 3. The redirect_uri_mismatch error should be resolved
 
 
+

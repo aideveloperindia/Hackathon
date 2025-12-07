@@ -14,7 +14,7 @@ import submissionRoutes from './routes/submission.routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5001; // Single unified port
 
 // Middleware
 app.use(cors({
@@ -36,12 +36,17 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/submissions', submissionRoutes);
 
-// Error handling middleware
+// Error handling middleware - MUST be after all routes
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('❌❌❌ UNHANDLED ERROR ❌❌❌');
   console.error('Error:', err);
+  console.error('Error message:', err?.message);
+  console.error('Error stack:', err?.stack);
+  console.error('Request path:', req.path);
+  console.error('Request method:', req.method);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
-    stack: err.stack
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
@@ -70,9 +75,11 @@ async function startDevServer() {
     });
 
     app.listen(PORT, () => {
-      console.log(`🚀 Unified development server running on http://localhost:${PORT}`);
+      console.log(`🚀🚀🚀 UNIFIED SERVER RUNNING ON PORT ${PORT} 🚀🚀🚀`);
       console.log(`📊 Environment: development`);
-      console.log(`✨ Frontend and backend running together on port ${PORT}`);
+      console.log(`✨ Frontend and backend running together on ONE port: ${PORT}`);
+      console.log(`✅ Access your app at: http://localhost:${PORT}`);
+      console.log(`✅ API available at: http://localhost:${PORT}/api`);
     });
   } catch (err) {
     console.error('Failed to start dev server:', err);

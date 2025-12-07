@@ -1,11 +1,8 @@
 import axios from 'axios';
 
-// In production (Vercel), use relative /api path
-// In development, Vite proxy handles /api -> http://localhost:5001
-// So we can use /api in both cases
-const API_URL = import.meta.env.PROD 
-  ? '/api' 
-  : (import.meta.env.VITE_API_URL || '/api');
+// Unified server - same port for frontend and backend
+// Use /api in both development and production
+const API_URL = '/api';
 
 const api = axios.create({
   baseURL: API_URL,
