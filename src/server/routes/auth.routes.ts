@@ -543,6 +543,17 @@ router.get('/google', (req: Request, res: Response) => {
     
     console.log('🔍 OAuth /google endpoint called');
     console.log('   GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? `${GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET');
+    console.log('   Request headers:', {
+      host: req.headers.host,
+      'x-forwarded-host': req.headers['x-forwarded-host'],
+      'x-forwarded-proto': req.headers['x-forwarded-proto'],
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+    });
+    console.log('   Environment:', {
+      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
+      VERCEL_URL: process.env.VERCEL_URL || 'NOT SET',
+      NODE_ENV: process.env.NODE_ENV || 'NOT SET',
+    });
     
     if (!GOOGLE_CLIENT_ID) {
       console.error('❌ GOOGLE_CLIENT_ID not configured');
@@ -550,7 +561,7 @@ router.get('/google', (req: Request, res: Response) => {
     }
 
     // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
-    // For production, we need to use the actual deployed URL
+    // HARDCODE the production URL to ensure exact match
     let redirectUri: string;
     
     // Check if we're in local development
@@ -560,30 +571,9 @@ router.get('/google', (req: Request, res: Response) => {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - prioritize FRONTEND_URL, then VERCEL_URL, then request headers
-      let baseUrl: string;
-      if (process.env.FRONTEND_URL) {
-        baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-      } else {
-        // Try to get from request headers as fallback
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const host = req.headers['x-forwarded-host'] || req.headers.host;
-        if (host) {
-          baseUrl = `${protocol}://${host}`;
-        } else {
-          // Last resort - use hardcoded production URL
-          baseUrl = 'https://jits-coding-platform.vercel.app';
-        }
-      }
-      redirectUri = `${baseUrl}/api/auth/google/callback`;
+      // Production - HARDCODE to ensure exact match with Google Console
+      redirectUri = 'https://jits-coding-platform.vercel.app/api/auth/google/callback';
     }
-  
-  // Allow override from query parameter (for testing)
-  if (req.query.redirect_uri && process.env.NODE_ENV === 'development') {
-    redirectUri = req.query.redirect_uri as string;
-  }
   
   // Ensure no trailing slash and exact format
   redirectUri = redirectUri.replace(/\/$/, '');
@@ -592,27 +582,28 @@ router.get('/google', (req: Request, res: Response) => {
   const responseType = 'code';
   const state = req.query.state as string || 'default';
 
-  // Build Google OAuth URL with proper encoding
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri,
-    response_type: responseType,
-    scope: scope,
-    state: state,
-    access_type: 'offline',
-    prompt: 'consent',
-  });
+    // Build Google OAuth URL with proper encoding
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: responseType,
+      scope: scope,
+      state: state,
+      access_type: 'offline',
+      prompt: 'consent',
+    });
 
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
     console.log('🔗 OAuth Configuration:');
-    console.log('   Redirect URI:', redirectUri);
+    console.log('   Redirect URI (EXACT):', redirectUri);
+    console.log('   Redirect URI Length:', redirectUri.length);
+    console.log('   Redirect URI Encoded:', encodeURIComponent(redirectUri));
+    console.log('   Full OAuth URL:', googleAuthUrl);
+    console.log('   Client ID (first 20 chars):', GOOGLE_CLIENT_ID?.substring(0, 20));
     console.log('   FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
     console.log('   VERCEL_URL:', process.env.VERCEL_URL || 'NOT SET');
     console.log('   NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
-    console.log('   Request Host:', req.headers.host);
-    console.log('   X-Forwarded-Host:', req.headers['x-forwarded-host']);
-    console.log('   X-Forwarded-Proto:', req.headers['x-forwarded-proto']);
 
     res.redirect(googleAuthUrl);
   } catch (error: any) {
@@ -661,24 +652,8 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - use same logic as initial request (MUST MATCH EXACTLY)
-      let baseUrl: string;
-      if (process.env.FRONTEND_URL) {
-        baseUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-      } else {
-        // Try to get from request headers as fallback
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const host = req.headers['x-forwarded-host'] || req.headers.host;
-        if (host) {
-          baseUrl = `${protocol}://${host}`;
-        } else {
-          // Last resort - use hardcoded production URL (must match Google Console)
-          baseUrl = 'https://jits-coding-platform.vercel.app';
-        }
-      }
-      redirectUri = `${baseUrl}/api/auth/google/callback`;
+      // Production - HARDCODE to ensure exact match with initial request
+      redirectUri = 'https://jits-coding-platform.vercel.app/api/auth/google/callback';
     }
     
     // Ensure no trailing slash and exact format
@@ -694,13 +669,12 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     });
 
     console.log('🔄 Exchanging OAuth code for token...');
-    console.log('   Redirect URI:', redirectUri);
-    console.log('   Client ID:', GOOGLE_CLIENT_ID?.substring(0, 20) + '...');
-    console.log('   FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
-    console.log('   VERCEL_URL:', process.env.VERCEL_URL || 'NOT SET');
-    console.log('   Request Host:', req.headers.host);
-    console.log('   X-Forwarded-Host:', req.headers['x-forwarded-host']);
-    console.log('   X-Forwarded-Proto:', req.headers['x-forwarded-proto']);
+    console.log('   Redirect URI (EXACT):', redirectUri);
+    console.log('   Redirect URI Length:', redirectUri.length);
+    console.log('   Redirect URI Encoded:', encodeURIComponent(redirectUri));
+    console.log('   Client ID (first 20 chars):', GOOGLE_CLIENT_ID?.substring(0, 20));
+    console.log('   Code received:', code ? 'YES' : 'NO');
+    console.log('   Code length:', (code as string)?.length || 0);
 
     let tokenResponse;
     try {
@@ -716,9 +690,14 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     } catch (error: any) {
       console.error('❌ Google OAuth token exchange failed:');
       console.error('   Status:', error.response?.status);
-      console.error('   Error:', error.response?.data);
+      console.error('   Status Text:', error.response?.statusText);
+      console.error('   Error Data:', JSON.stringify(error.response?.data, null, 2));
+      console.error('   Error Message:', error.message);
       console.error('   Redirect URI used:', redirectUri);
-      console.error('   Client ID:', GOOGLE_CLIENT_ID?.substring(0, 20) + '...');
+      console.error('   Redirect URI (should match Google Console EXACTLY):', redirectUri);
+      console.error('   Client ID (first 20 chars):', GOOGLE_CLIENT_ID?.substring(0, 20));
+      console.error('   Request URL:', req.url);
+      console.error('   Request Query:', JSON.stringify(req.query));
       throw error;
     }
 
