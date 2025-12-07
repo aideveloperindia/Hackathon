@@ -12,7 +12,9 @@ import submissionRoutes from './routes/submission.routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5002;
+// IMPORTANT: Backend MUST run on 5002, frontend on 5001
+// Vite proxies /api requests from 5001 to 5002
+const PORT = process.env.PORT === '5001' ? 5002 : (process.env.PORT || 5002);
 
 // Export prisma for routes (using singleton from utils/prisma.ts)
 export { prisma };
@@ -27,7 +29,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'JITS Coding Platform API is running' });
+  console.log('✅ Health check hit');
+  res.json({ status: 'ok', message: 'JITS Coding Platform API is running', port: PORT });
 });
 
 // API Routes
@@ -48,9 +51,14 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Error handling middleware
+// Error handling middleware - MUST be after all routes
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('❌❌❌ UNHANDLED ERROR ❌❌❌');
   console.error('Error:', err);
+  console.error('Error message:', err?.message);
+  console.error('Error stack:', err?.stack);
+  console.error('Request path:', req.path);
+  console.error('Request method:', req.method);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
@@ -76,8 +84,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Backend server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✅ API available at http://localhost:${PORT}/api`);
+  console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
 });
 
 // Graceful shutdown

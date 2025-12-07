@@ -181,8 +181,16 @@ router.post(
 
 // Test endpoint - SIMPLEST POSSIBLE
 router.get('/student/login-ht-test', (req: Request, res: Response) => {
-  console.log('🔍 TEST ENDPOINT HIT');
-  res.status(200).json({ message: 'HT login route is working', status: 'ok' });
+  try {
+    console.log('🔍 TEST ENDPOINT HIT - Route is accessible');
+    console.log('Request method:', req.method);
+    console.log('Request path:', req.path);
+    console.log('Request url:', req.url);
+    return res.status(200).json({ message: 'HT login route is working', status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error: any) {
+    console.error('❌ Test endpoint error:', error);
+    return res.status(500).json({ error: error?.message || 'Test failed', stack: error?.stack });
+  }
 });
 
 // Student Login with HT No and Phone Number (for team users)

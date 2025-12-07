@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 export default function StudentLogin() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { login } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,12 +33,8 @@ export default function StudentLogin() {
         phoneNumber: formData.phoneNumber.trim(),
       });
 
-      // Save token
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      // Update auth context
-      setUser(response.data.user);
+      // Use login function from AuthContext (handles token and user storage)
+      login(response.data.token, response.data.user);
 
       // Redirect to dashboard
       navigate('/student/dashboard');
