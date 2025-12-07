@@ -561,22 +561,19 @@ router.get('/google', (req: Request, res: Response) => {
     }
 
     // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
+    // HARDCODE production URL to ensure exact match - NO DYNAMIC LOGIC
     let redirectUri: string;
     
     // Check if we're in local development
-    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
+    const isLocalDev = !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
     
     if (isLocalDev) {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - Use FRONTEND_URL or VERCEL_URL to build the redirect URI
-      const baseUrl = process.env.FRONTEND_URL 
-        ? process.env.FRONTEND_URL.replace(/\/$/, '')
-        : (process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'https://jits-coding-platform-new.vercel.app');
-      redirectUri = `${baseUrl}/api/auth/google/callback`;
+      // Production - HARDCODE to match Google Console EXACTLY
+      // This MUST match the redirect URI in Google Cloud Console character-for-character
+      redirectUri = 'https://jits-coding-platform-new.vercel.app/api/auth/google/callback';
     }
   
   // Ensure no trailing slash and exact format
@@ -647,22 +644,19 @@ router.get('/google/callback', async (req: Request, res: Response) => {
 
     // Exchange code for tokens - must match the redirect URI used in the initial request EXACTLY
     // This MUST be identical to what was sent in the initial OAuth request
+    // HARDCODE production URL to ensure exact match - NO DYNAMIC LOGIC
     let redirectUri: string;
     
     // Check if we're in local development
-    const isLocalDev = !process.env.FRONTEND_URL && !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
+    const isLocalDev = !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
     
     if (isLocalDev) {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - Use FRONTEND_URL or VERCEL_URL to build the redirect URI (must match initial request)
-      const baseUrl = process.env.FRONTEND_URL 
-        ? process.env.FRONTEND_URL.replace(/\/$/, '')
-        : (process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'https://jits-coding-platform-new.vercel.app');
-      redirectUri = `${baseUrl}/api/auth/google/callback`;
+      // Production - HARDCODE to match initial request EXACTLY
+      // This MUST match the redirect URI in Google Cloud Console character-for-character
+      redirectUri = 'https://jits-coding-platform-new.vercel.app/api/auth/google/callback';
     }
     
     // Ensure no trailing slash and exact format
