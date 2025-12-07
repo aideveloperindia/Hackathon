@@ -222,11 +222,22 @@ router.post('/student/login-ht',   async (req: Request, res: Response) => {
         hasStudent: !!masterStudent.student 
       });
 
-      // Verify phone number matches
-      if (masterStudent.phoneNumber !== trimmedPhone) {
+      // Verify phone number matches (handle null/undefined and trim both)
+      const dbPhone = masterStudent.phoneNumber?.trim() || '';
+      const inputPhone = trimmedPhone.trim();
+      
+      console.log('🔍 Comparing phone numbers:', { 
+        dbPhone: dbPhone, 
+        inputPhone: inputPhone,
+        match: dbPhone === inputPhone
+      });
+      
+      if (dbPhone !== inputPhone) {
         console.log('❌ Phone number mismatch:', { 
-          expected: masterStudent.phoneNumber, 
-          received: trimmedPhone 
+          expected: dbPhone, 
+          received: inputPhone,
+          dbType: typeof dbPhone,
+          inputType: typeof inputPhone
         });
         return res.status(401).json({ error: 'Invalid phone number. Please check and try again.' });
       }
