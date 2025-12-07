@@ -179,15 +179,20 @@ router.post(
   }
 );
 
+// Test endpoint to verify route is working
+router.get('/student/login-ht-test', (req: Request, res: Response) => {
+  res.json({ message: 'HT login endpoint is accessible', status: 'ok' });
+});
+
 // Student Login with HT No and Phone Number (for team users)
-router.post('/student/login-ht',   async (req: Request, res: Response) => {
-    try {
-      console.log('🔍 HT Login attempt:', { htNo: req.body.htNo, phoneNumber: req.body.phoneNumber ? '***' : 'missing' });
-      
-      // Simple validation
-      if (!req.body.htNo || !req.body.phoneNumber) {
-        return res.status(400).json({ error: 'Hall Ticket Number and Phone Number are required' });
-      }
+router.post('/student/login-ht', async (req: Request, res: Response) => {
+  try {
+    console.log('🔍 HT Login attempt:', { htNo: req.body.htNo, phoneNumber: req.body.phoneNumber ? '***' : 'missing' });
+    
+    // Simple validation
+    if (!req.body.htNo || !req.body.phoneNumber) {
+      return res.status(400).json({ error: 'Hall Ticket Number and Phone Number are required' });
+    }
 
       const { htNo, phoneNumber } = req.body;
       const trimmedHtNo = htNo.trim().toUpperCase();
