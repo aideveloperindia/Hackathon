@@ -182,23 +182,38 @@ router.post(
 // Student Login with HT No and Phone Number (for team users)
 router.post('/student/login-ht', async (req: Request, res: Response) => {
   try {
-    console.log('🔍 HT Login attempt received');
+    console.log('🔍 ===== HT LOGIN ATTEMPT =====');
+    console.log('Request body:', JSON.stringify(req.body));
     
     // Validate input
-    if (!req.body || !req.body.htNo || !req.body.phoneNumber) {
-      return res.status(400).json({ error: 'Hall Ticket Number and Phone Number are required' });
+    if (!req.body) {
+      console.log('❌ No request body');
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+    
+    if (!req.body.htNo) {
+      console.log('❌ HT No missing');
+      return res.status(400).json({ error: 'Hall Ticket Number is required' });
+    }
+    
+    if (!req.body.phoneNumber) {
+      console.log('❌ Phone Number missing');
+      return res.status(400).json({ error: 'Phone Number is required' });
     }
 
     const htNo = String(req.body.htNo).trim().toUpperCase();
     const phoneNumber = String(req.body.phoneNumber).trim();
 
-    console.log('📋 Login request:', { htNo, phoneLength: phoneNumber.length });
+    console.log('📋 Processing:', { htNo, phoneNumber: phoneNumber.substring(0, 3) + '***' });
 
     // Check if HT No is allowed
     const allowedHtNos = ['22271A6651', '22271A6652', '22271A6629', '232275A6601'];
     if (!allowedHtNos.includes(htNo)) {
+      console.log('❌ HT No not allowed:', htNo);
       return res.status(403).json({ error: 'Access denied. Invalid Hall Ticket Number.' });
     }
+
+    console.log('✅ HT No is allowed, looking up in database...');
 
     // Find master student
     const masterStudent = await prisma.masterStudent.findUnique({
@@ -207,19 +222,30 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
     });
 
     if (!masterStudent) {
+      console.log('❌ Master student not found in database');
       return res.status(401).json({ error: 'Hall Ticket Number not found.' });
     }
+
+    console.log('✅ Master student found:', masterStudent.name);
+    console.log('   DB Phone:', masterStudent.phoneNumber);
+    console.log('   Input Phone:', phoneNumber);
 
     // Verify phone number
     const dbPhone = String(masterStudent.phoneNumber || '').trim();
     if (dbPhone !== phoneNumber) {
+      console.log('❌ Phone mismatch - DB:', dbPhone, 'Input:', phoneNumber);
       return res.status(401).json({ error: 'Invalid phone number. Please check and try again.' });
     }
 
+    console.log('✅ Phone number matches');
+
     // Check student account
     if (!masterStudent.student) {
+      console.log('❌ No student account');
       return res.status(401).json({ error: 'No account found. Please contact support.' });
     }
+
+    console.log('✅ Student account exists');
 
     // Generate token
     const token = generateToken({
@@ -229,9 +255,9 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
       htNo: masterStudent.htNo,
     });
 
-    console.log(`✅ Login successful for ${htNo}`);
+    console.log(`✅✅✅ LOGIN SUCCESSFUL FOR ${htNo} ✅✅✅`);
 
-    res.json({
+    return res.json({
       message: 'Login successful',
       token,
       user: {
@@ -247,7 +273,10 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('❌ Login error:', error);
+    console.error('❌❌❌ LOGIN ERROR ❌❌❌');
+    console.error('Error:', error);
+    console.error('Message:', error?.message);
+    console.error('Stack:', error?.stack);
     res.status(500).json({ 
       error: error?.message || 'Login failed. Please try again.',
       ...(process.env.NODE_ENV === 'development' && { stack: error?.stack })
