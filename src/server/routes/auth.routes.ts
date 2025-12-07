@@ -281,7 +281,7 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
 
     console.log(`✅✅✅ LOGIN SUCCESSFUL FOR ${htNo} ✅✅✅`);
 
-    return res.json({
+    const responseData = {
       message: 'Login successful',
       token,
       user: {
@@ -295,16 +295,27 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
         phoneNumber: masterStudent.phoneNumber,
         role: 'student',
       },
-    });
+    };
+
+    console.log('Sending response...');
+    return res.status(200).json(responseData);
   } catch (error: any) {
     console.error('❌❌❌ LOGIN ERROR ❌❌❌');
+    console.error('Error type:', typeof error);
     console.error('Error:', error);
-    console.error('Message:', error?.message);
-    console.error('Stack:', error?.stack);
-    res.status(500).json({ 
-      error: error?.message || 'Login failed. Please try again.',
-      ...(process.env.NODE_ENV === 'development' && { stack: error?.stack })
-    });
+    console.error('Error message:', error?.message);
+    console.error('Error stack:', error?.stack);
+    console.error('Error name:', error?.name);
+    
+    const errorMessage = error?.message || 'Login failed. Please try again.';
+    const errorResponse: any = { error: errorMessage };
+    
+    if (process.env.NODE_ENV === 'development') {
+      errorResponse.stack = error?.stack;
+      errorResponse.details = String(error);
+    }
+    
+    return res.status(500).json(errorResponse);
   }
 });
 
