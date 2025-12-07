@@ -539,88 +539,56 @@ router.post(
 // Google OAuth - Initiate login
 router.get('/google', (req: Request, res: Response) => {
   try {
+    // Get Client ID from environment
     const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
     
-    console.log('🔍 OAuth /google endpoint called');
-    console.log('   GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? `${GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NOT SET');
-    console.log('   Request headers:', {
-      host: req.headers.host,
-      'x-forwarded-host': req.headers['x-forwarded-host'],
-      'x-forwarded-proto': req.headers['x-forwarded-proto'],
-      'x-forwarded-for': req.headers['x-forwarded-for'],
-    });
-    console.log('   Environment:', {
-      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
-      VERCEL_URL: process.env.VERCEL_URL || 'NOT SET',
-      NODE_ENV: process.env.NODE_ENV || 'NOT SET',
-    });
-    
-    if (!GOOGLE_CLIENT_ID) {
+    // Validate Client ID exists
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.trim() === '') {
       console.error('❌ GOOGLE_CLIENT_ID not configured');
-      return res.status(500).json({ error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID environment variable.' });
+      return res.status(500).json({ 
+        error: 'Google OAuth not configured',
+        message: 'GOOGLE_CLIENT_ID environment variable is not set'
+      });
     }
 
-    // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
-    // HARDCODE production URL to ensure exact match - NO DYNAMIC LOGIC
+    // Determine redirect URI based on environment
     let redirectUri: string;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_URL;
     
-    // Check if we're in local development
-    const isLocalDev = !process.env.VERCEL_URL && process.env.NODE_ENV !== 'production';
-    
-    if (isLocalDev) {
-      // Local development - ALWAYS use localhost:5001 (frontend port)
-      redirectUri = 'http://localhost:5001/api/auth/google/callback';
-    } else {
-      // Production - HARDCODE to match Google Console EXACTLY
-      // This MUST match the redirect URI in Google Cloud Console character-for-character
+    if (isProduction) {
+      // Production - use hardcoded URL
       redirectUri = 'https://jits-coding-platform-new.vercel.app/api/auth/google/callback';
+    } else {
+      // Local development
+      redirectUri = 'http://localhost:5001/api/auth/google/callback';
     }
-  
-    // Ensure no trailing slash and exact format
-    redirectUri = redirectUri.replace(/\/$/, '');
 
-    const scope = 'openid email profile';
-    const responseType = 'code';
-    const state = req.query.state as string || 'default';
-
-    // Build Google OAuth URL with proper encoding
+    // Build OAuth URL
     const params = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: GOOGLE_CLIENT_ID.trim(),
       redirect_uri: redirectUri,
-      response_type: responseType,
-      scope: scope,
-      state: state,
+      response_type: 'code',
+      scope: 'openid email profile',
       access_type: 'offline',
       prompt: 'consent',
+      state: (req.query.state as string) || 'default'
     });
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-    console.log('🔗 OAuth Configuration:');
-    console.log('   Redirect URI (EXACT):', redirectUri);
-    console.log('   Redirect URI Length:', redirectUri.length);
-    console.log('   Redirect URI Encoded:', encodeURIComponent(redirectUri));
-    console.log('   Full OAuth URL (first 200 chars):', googleAuthUrl.substring(0, 200));
-    console.log('   Client ID (FULL):', GOOGLE_CLIENT_ID);
-    console.log('   Client ID Length:', GOOGLE_CLIENT_ID?.length);
-    console.log('   Client ID has spaces?', GOOGLE_CLIENT_ID?.includes(' ') ? 'YES ❌' : 'NO ✅');
-    console.log('   FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
-    console.log('   VERCEL_URL:', process.env.VERCEL_URL || 'NOT SET');
-    console.log('   NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
-    console.log('   Scope:', scope);
-    console.log('   Response Type:', responseType);
+    console.log('🔗 Redirecting to Google OAuth');
+    console.log('   Redirect URI:', redirectUri);
+    console.log('   Client ID:', GOOGLE_CLIENT_ID.substring(0, 20) + '...');
 
+    // Redirect to Google
     res.redirect(googleAuthUrl);
   } catch (error: any) {
-    console.error('❌ Error in /google endpoint:', error);
-    console.error('   Error name:', error?.name);
-    console.error('   Error message:', error?.message);
-    console.error('   Error stack:', error?.stack);
-    console.error('   Error details:', JSON.stringify(error, null, 2));
+    console.error('❌ OAuth error:', error);
+    const errorMessage = error?.message || 'Unknown error';
     res.status(500).json({ 
       error: 'Failed to initiate OAuth login',
-      message: error?.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      message: errorMessage,
+      ...(process.env.NODE_ENV === 'development' && { stack: error?.stack })
     });
   }
 });
