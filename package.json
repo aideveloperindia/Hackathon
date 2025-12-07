@@ -60,11 +60,14 @@
     "tailwindcss": "^3.3.6",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "vercel": "^49.1.0",
+    "vercel": "^49.1.1",
     "vite": "^5.0.8",
     "vite-express": "^0.21.1"
   },
   "prisma": {
     "seed": "tsx src/server/prisma/seed.ts"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }

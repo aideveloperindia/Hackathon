@@ -561,7 +561,6 @@ router.get('/google', (req: Request, res: Response) => {
     }
 
     // Get the redirect URL - must match Google Cloud Console configuration EXACTLY
-    // HARDCODE the production URL to ensure exact match
     let redirectUri: string;
     
     // Check if we're in local development
@@ -571,8 +570,13 @@ router.get('/google', (req: Request, res: Response) => {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - HARDCODE to ensure exact match with Google Console
-      redirectUri = 'https://jits-coding-platform.vercel.app/api/auth/google/callback';
+      // Production - Use FRONTEND_URL or VERCEL_URL to build the redirect URI
+      const baseUrl = process.env.FRONTEND_URL 
+        ? process.env.FRONTEND_URL.replace(/\/$/, '')
+        : (process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'https://jits-coding-platform-new.vercel.app');
+      redirectUri = `${baseUrl}/api/auth/google/callback`;
     }
   
   // Ensure no trailing slash and exact format
@@ -652,8 +656,13 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       // Local development - ALWAYS use localhost:5001 (frontend port)
       redirectUri = 'http://localhost:5001/api/auth/google/callback';
     } else {
-      // Production - HARDCODE to ensure exact match with initial request
-      redirectUri = 'https://jits-coding-platform.vercel.app/api/auth/google/callback';
+      // Production - Use FRONTEND_URL or VERCEL_URL to build the redirect URI (must match initial request)
+      const baseUrl = process.env.FRONTEND_URL 
+        ? process.env.FRONTEND_URL.replace(/\/$/, '')
+        : (process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'https://jits-coding-platform-new.vercel.app');
+      redirectUri = `${baseUrl}/api/auth/google/callback`;
     }
     
     // Ensure no trailing slash and exact format
