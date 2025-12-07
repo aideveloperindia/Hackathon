@@ -179,11 +179,19 @@ router.post(
   }
 );
 
+// Test endpoint
+router.get('/student/login-ht-test', (req: Request, res: Response) => {
+  res.json({ message: 'HT login route is working', status: 'ok' });
+});
+
 // Student Login with HT No and Phone Number (for team users)
 router.post('/student/login-ht', async (req: Request, res: Response) => {
+  console.log('🔍 ===== HT LOGIN ENDPOINT CALLED =====');
   try {
-    console.log('🔍 ===== HT LOGIN ATTEMPT =====');
+    console.log('Request received');
     console.log('Request body:', JSON.stringify(req.body));
+    console.log('Request method:', req.method);
+    console.log('Request path:', req.path);
     
     // Validate input
     if (!req.body) {
