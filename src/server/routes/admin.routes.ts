@@ -90,9 +90,18 @@ router.get('/dashboard', async (req, res) => {
 
           // Only count ACCEPTED submissions for scoring
           const acceptedSubmissions = submissions.filter(s => s.verdict === 'ACCEPTED');
+          
+          // Check for locked answers (matching admin's correct answer)
+          const lockedSubmissions = acceptedSubmissions.filter((s: any) => 
+            s.executionResult && (s.executionResult as any).matchesCorrectAnswer === true
+          );
+          
           const totalScore = acceptedSubmissions.reduce((sum, s) => sum + s.score, 0);
-          // Sum up all timeTakenSeconds from accepted submissions
           const totalTimeTaken = acceptedSubmissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
+          const lockedAnswersCount = lockedSubmissions.length;
+          const lockedTimeTaken = lockedSubmissions.reduce((sum: number, s: any) => 
+            sum + (s.timeTakenSeconds || 0), 0
+          );
 
           return {
             studentId: participant.studentId,
@@ -103,11 +112,22 @@ router.get('/dashboard', async (req, res) => {
             year: participant.student.masterStudent.year,
             totalScore,
             timeTaken: totalTimeTaken,
+            lockedAnswersCount,
+            lockedTimeTaken,
           };
         })
       );
 
+      // Same ranking logic as event leaderboard
       participantScores.sort((a, b) => {
+        if (a.lockedAnswersCount > 0 && b.lockedAnswersCount > 0) {
+          if (a.lockedAnswersCount === b.lockedAnswersCount) {
+            return a.lockedTimeTaken - b.lockedTimeTaken;
+          }
+          return b.lockedAnswersCount - a.lockedAnswersCount;
+        }
+        if (a.lockedAnswersCount > 0) return -1;
+        if (b.lockedAnswersCount > 0) return 1;
         if (b.totalScore !== a.totalScore) {
           return b.totalScore - a.totalScore;
         }

@@ -304,7 +304,8 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
     }
 
     // Calculate scores for all participants
-    // Rank by: 1) Total score (highest first), 2) Total time taken (fastest first)
+    // Rank by: Participants with correct answers (matching admin's answer) ranked by fastest time first
+    // Then others ranked by score, then time
     const participantScores = await Promise.all(
       event.participants.map(async (participant) => {
         const submissions = await prisma.submission.findMany({
@@ -315,9 +316,21 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
           },
         });
 
+        // Check if student has submissions that match admin's correct answer (locked answers)
+        const lockedSubmissions = submissions.filter((s: any) => 
+          s.executionResult && (s.executionResult as any).matchesCorrectAnswer === true
+        );
+        
         const totalScore = submissions.reduce((sum, s) => sum + s.score, 0);
         // Sum up all timeTakenSeconds from accepted submissions (time when each question was solved)
         const totalTimeTaken = submissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
+        
+        // Count how many questions have locked (correct) answers
+        const lockedAnswersCount = lockedSubmissions.length;
+        // Total time for locked answers only (for ranking)
+        const lockedTimeTaken = lockedSubmissions.reduce((sum: number, s: any) => 
+          sum + (s.timeTakenSeconds || 0), 0
+        );
 
         return {
           studentId: participant.studentId,
@@ -328,16 +341,33 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
           year: participant.student.masterStudent.year,
           totalScore,
           timeTaken: totalTimeTaken, // Total time across all questions
+          lockedAnswersCount, // Number of questions with correct (locked) answers
+          lockedTimeTaken, // Total time for locked answers (for ranking)
         };
       })
     );
 
-    // Sort: Highest score first, then fastest time (lowest time) first
+    // Sort: 
+    // 1. Participants with locked answers (matching admin's correct answer) - ranked by fastest locked time
+    // 2. Others - ranked by score, then time
     participantScores.sort((a, b) => {
+      // If both have locked answers, rank by fastest locked time
+      if (a.lockedAnswersCount > 0 && b.lockedAnswersCount > 0) {
+        // If same number of locked answers, rank by fastest time
+        if (a.lockedAnswersCount === b.lockedAnswersCount) {
+          return a.lockedTimeTaken - b.lockedTimeTaken;
+        }
+        // More locked answers = higher rank
+        return b.lockedAnswersCount - a.lockedAnswersCount;
+      }
+      // If only one has locked answers, that one ranks higher
+      if (a.lockedAnswersCount > 0) return -1;
+      if (b.lockedAnswersCount > 0) return 1;
+      
+      // Neither has locked answers - rank by score, then time
       if (b.totalScore !== a.totalScore) {
         return b.totalScore - a.totalScore;
       }
-      // If scores are equal, rank by time (fastest = lowest time = first)
       return a.timeTaken - b.timeTaken;
     });
 

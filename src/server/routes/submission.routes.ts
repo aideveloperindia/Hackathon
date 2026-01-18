@@ -154,7 +154,8 @@ router.post(
         }
       }
 
-      // Also check against admin's correct answer if provided
+      // Check against admin's correct answer if provided - this locks the answer
+      let matchesCorrectAnswer = false;
       if (correctAnswer) {
         try {
           const jdoodleResult = await executeCodeWithJDoodle(code, language, '');
@@ -162,6 +163,7 @@ router.post(
           const adminAnswer = normalizeOutput(correctAnswer);
           
           if (studentOutput === adminAnswer) {
+            matchesCorrectAnswer = true;
             verdict = 'ACCEPTED';
             passedTests = testCases.length;
             totalScore = testCases.reduce((sum: number, tc: any) => sum + (tc.score || 0), 0);
@@ -185,7 +187,7 @@ router.post(
       // Calculate time taken (from question start to now)
       const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
 
-      // Save submission
+      // Save submission with flag indicating if it matches admin's correct answer
       const submission = await prisma.submission.create({
         data: {
           eventId,
@@ -200,12 +202,13 @@ router.post(
             passedTests,
             totalTests: testCases.length,
             executionDetails,
+            matchesCorrectAnswer, // Flag to indicate answer is locked
           } as any,
         },
       });
 
       res.json({
-        message: 'Submission received',
+        message: matchesCorrectAnswer ? 'Answer locked! Matches correct solution.' : 'Submission received',
         submission: {
           id: submission.id,
           verdict: submission.verdict,
@@ -214,6 +217,7 @@ router.post(
           passedTests,
           totalTests: testCases.length,
           executionDetails,
+          matchesCorrectAnswer, // Flag to indicate answer is locked
         },
       });
     } catch (error: any) {

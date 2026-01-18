@@ -197,10 +197,18 @@ export default function CodingEnvironment() {
 
       setSubmissionResult(response.data.submission);
       
-      // Stop timer if code is correct
+      // Stop timer if code is correct and matches admin's answer (locked)
       if (response.data.submission.verdict === 'ACCEPTED') {
         setTimerRunning(false);
-        alert(`Congratulations! Your solution is correct! Time taken: ${formatTime(response.data.submission.timeTakenSeconds || elapsedTime)}`);
+        const isLocked = response.data.submission.executionDetails?.some((detail: any) => 
+          detail.matchesCorrectAnswer === true
+        ) || response.data.submission.matchesCorrectAnswer;
+        
+        if (isLocked) {
+          alert(`🎉 Perfect! Your answer matches the correct solution and is now LOCKED! Time taken: ${formatTime(response.data.submission.timeTakenSeconds || elapsedTime)}`);
+        } else {
+          alert(`Congratulations! Your solution is correct! Time taken: ${formatTime(response.data.submission.timeTakenSeconds || elapsedTime)}`);
+        }
       }
       
       // Option to move to next question after manual submit
