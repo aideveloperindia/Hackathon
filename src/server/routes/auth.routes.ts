@@ -945,16 +945,7 @@ router.post('/complete-profile', authenticate, requireStudent, [
     console.log('  - Current HT No:', student.masterStudent.htNo);
     console.log('  - New HT No:', trimmedHtNo);
     
-    // Validate HT number format: 10 characters, "27" at positions 3-4 (0-indexed: 2-3)
-    if (!trimmedHtNo || trimmedHtNo.length !== 10) {
-      return res.status(400).json({ error: 'Hall Ticket Number must be exactly 10 characters long' });
-    }
-
-    if (trimmedHtNo.charAt(2) !== '2' || trimmedHtNo.charAt(3) !== '7') {
-      return res.status(400).json({
-        error: 'Invalid Hall Ticket Number. College code "27" must be at positions 3-4 (e.g., 22271A0660)'
-      });
-    }
+    // No format validation - accept any roll number format
     
     // Check if HT number is already taken by another student
     const existingMasterStudent = await prisma.masterStudent.findUnique({

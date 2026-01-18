@@ -35,15 +35,8 @@ export default function CompleteStudentProfile() {
 
     if (!formData.htNo.trim()) {
       newErrors.htNo = 'Hall Ticket Number is required';
-    } else {
-      const htNo = formData.htNo.trim().toUpperCase();
-      // Simple validation: 10 characters, "27" at positions 3-4 (0-indexed: 2-3)
-      if (htNo.length !== 10) {
-        newErrors.htNo = 'Hall Ticket Number must be exactly 10 characters';
-      } else if (htNo.charAt(2) !== '2' || htNo.charAt(3) !== '7') {
-        newErrors.htNo = 'Invalid format: Characters at positions 3-4 must be "27"';
-      }
     }
+    // No format validation - accept any roll number format
 
     if (!formData.year) {
       newErrors.year = 'Year is required';
