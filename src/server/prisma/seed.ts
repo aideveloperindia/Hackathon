@@ -278,7 +278,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5, // 5 minutes for each question
+        correctAnswer: null, // Correct answer will be set by admin
       },
     });
   }
@@ -391,7 +391,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5, // 5 minutes for each question
+        correctAnswer: null, // Correct answer will be set by admin
       },
     });
   }
@@ -504,7 +504,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5, // 5 minutes for each question
+        correctAnswer: null, // Correct answer will be set by admin
       },
     });
   }
@@ -615,7 +615,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5,
+        correctAnswer: null,
       },
     });
   }
@@ -726,7 +726,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5,
+        correctAnswer: null,
       },
     });
   }
@@ -837,7 +837,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5,
+        correctAnswer: null,
       },
     });
   }
@@ -948,7 +948,7 @@ async function main() {
         sampleInput: q.sampleInput,
         sampleOutput: q.sampleOutput,
         testCases: q.testCases,
-        timeLimitMinutes: 5,
+        correctAnswer: null,
       },
     });
   }
