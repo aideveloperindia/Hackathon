@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../utils/prisma';
 import { authenticate, requireStudent } from '../middleware/auth.middleware';
-import { executeCode } from '../utils/codeExecution';
+import { executeCodeWithJDoodle, normalizeOutput } from '../utils/jdoodle';
 
 const router = express.Router();
 
@@ -10,12 +10,49 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireStudent);
 
+// Test/Run code (without submitting)
+router.post(
+  '/test',
+  [
+    body('code').trim().notEmpty().withMessage('Code is required'),
+    body('language').notEmpty().withMessage('Language is required'),
+    body('input').optional(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { code, language, input } = req.body;
+
+      // Execute code using JDoodle
+      const result = await executeCodeWithJDoodle(code, language, input || '');
+
+      res.json({
+        output: result.output,
+        statusCode: result.statusCode,
+        memory: result.memory,
+        cpuTime: result.cpuTime,
+        compilationStatus: result.compilationStatus,
+      });
+    } catch (error: any) {
+      console.error('Test code error:', error);
+      res.status(500).json({ 
+        error: 'Failed to execute code',
+        message: error.message 
+      });
+    }
+  }
+);
+
 // Submit code
 router.post(
   '/events/:eventId/questions/:questionId',
   [
     body('code').trim().notEmpty().withMessage('Code is required'),
-    body('language').isIn(['C', 'Python', 'Java', 'Other']).withMessage('Invalid language'),
+    body('language').notEmpty().withMessage('Language is required'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -55,16 +92,7 @@ router.post(
         return res.status(403).json({ error: 'You have not joined this event' });
       }
 
-      // Check if time is up - only if endTime is explicitly set
-      // If endTime is not set, rely on event status (ACTIVE) to allow submissions
-      if (event.endTime) {
-        const now = new Date();
-        if (now > event.endTime) {
-          return res.status(400).json({ error: 'Event time has ended' });
-        }
-      }
-
-      // Get question with test cases
+      // Get question with test cases and correct answer
       const question = await prisma.question.findUnique({
         where: { id: questionId },
       });
@@ -77,19 +105,85 @@ router.post(
         return res.status(400).json({ error: 'Question does not belong to this event' });
       }
 
-      // Execute code
-      const testCases = question.testCases as Array<{
-        input: string;
-        expectedOutput: string;
-        score: number;
-      }>;
+      // Get question start time from localStorage key (we'll pass it from frontend)
+      const questionStartTime = req.body.questionStartTime 
+        ? parseInt(req.body.questionStartTime) 
+        : Date.now();
 
-      const executionResult = await executeCode(code, language, testCases);
+      // Execute code using JDoodle
+      const testCases = (question.testCases as any) || [];
+      const correctAnswer = (question as any).correctAnswer || '';
 
-      // Calculate time taken
-      const timeTaken = event.startTime
-        ? Math.floor((new Date().getTime() - event.startTime.getTime()) / 1000)
-        : null;
+      let passedTests = 0;
+      let totalScore = 0;
+      const executionDetails: any[] = [];
+      let verdict = 'WRONG_ANSWER';
+
+      // Execute code with JDoodle for each test case
+      for (let i = 0; i < testCases.length; i++) {
+        const testCase = testCases[i];
+        try {
+          const jdoodleResult = await executeCodeWithJDoodle(
+            code,
+            language,
+            testCase.input || ''
+          );
+
+          const studentOutput = normalizeOutput(jdoodleResult.output);
+          const expectedOutput = normalizeOutput(testCase.expectedOutput || '');
+          const passed = studentOutput === expectedOutput;
+
+          if (passed) {
+            passedTests++;
+            totalScore += testCase.score || 0;
+          }
+
+          executionDetails.push({
+            testCase: i + 1,
+            passed,
+            output: studentOutput,
+            expectedOutput: expectedOutput,
+            error: jdoodleResult.statusCode !== 200 ? 'Execution error' : undefined,
+          });
+        } catch (error: any) {
+          executionDetails.push({
+            testCase: i + 1,
+            passed: false,
+            error: error.message || 'Execution failed',
+          });
+        }
+      }
+
+      // Also check against admin's correct answer if provided
+      if (correctAnswer) {
+        try {
+          const jdoodleResult = await executeCodeWithJDoodle(code, language, '');
+          const studentOutput = normalizeOutput(jdoodleResult.output);
+          const adminAnswer = normalizeOutput(correctAnswer);
+          
+          if (studentOutput === adminAnswer) {
+            verdict = 'ACCEPTED';
+            passedTests = testCases.length;
+            totalScore = testCases.reduce((sum: number, tc: any) => sum + (tc.score || 0), 0);
+          }
+        } catch (error) {
+          // If JDoodle fails, rely on test cases
+        }
+      }
+
+      // Determine verdict based on test cases
+      if (verdict !== 'ACCEPTED') {
+        if (passedTests === testCases.length) {
+          verdict = 'ACCEPTED';
+        } else if (passedTests > 0) {
+          verdict = 'PARTIAL';
+        } else {
+          verdict = 'WRONG_ANSWER';
+        }
+      }
+
+      // Calculate time taken (from question start to now)
+      const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
 
       // Save submission
       const submission = await prisma.submission.create({
@@ -99,10 +193,14 @@ router.post(
           studentId,
           language,
           code,
-          verdict: executionResult.verdict as any,
-          score: executionResult.score,
+          verdict: verdict as any,
+          score: totalScore,
           timeTakenSeconds: timeTaken,
-          executionResult: executionResult as any,
+          executionResult: {
+            passedTests,
+            totalTests: testCases.length,
+            executionDetails,
+          } as any,
         },
       });
 
@@ -112,14 +210,15 @@ router.post(
           id: submission.id,
           verdict: submission.verdict,
           score: submission.score,
-          passedTests: executionResult.passedTests,
-          totalTests: executionResult.totalTests,
-          executionDetails: executionResult.executionDetails,
+          timeTakenSeconds: timeTaken,
+          passedTests,
+          totalTests: testCases.length,
+          executionDetails,
         },
       });
     } catch (error: any) {
       console.error('Submission error:', error);
-      res.status(500).json({ error: 'Failed to process submission' });
+      res.status(500).json({ error: 'Failed to process submission', message: error.message });
     }
   }
 );
@@ -156,4 +255,3 @@ router.get('/events/:eventId', async (req, res) => {
 });
 
 export default router;
-

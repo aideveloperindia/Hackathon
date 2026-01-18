@@ -55,3 +55,4 @@ backend/prisma/migrations/
 google_oauth_credentials.txt
 .env.production
 .env*.local.git_token
+.jdoodle_credentials

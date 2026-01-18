@@ -10,13 +10,15 @@ export default function CodingEnvironment() {
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
   const [code, setCode] = useState<string>('');
   const [language, setLanguage] = useState<string>('python');
-  const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<number>(0); // Timer that counts up
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [submissionResult, setSubmissionResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [autoSubmitted, setAutoSubmitted] = useState(false);
-  const autoSubmitRef = useRef(false);
+  const [testing, setTesting] = useState(false);
+  const [testOutput, setTestOutput] = useState<string>('');
+  const [testInput, setTestInput] = useState<string>('');
+  const [timerRunning, setTimerRunning] = useState<boolean>(true);
 
   // Define moveToNextQuestion first to avoid circular dependency
   const moveToNextQuestion = useCallback(() => {
@@ -28,19 +30,15 @@ export default function CodingEnvironment() {
       setSelectedQuestion(nextQuestion);
       setCode('');
       setSubmissionResult(null);
-      setAutoSubmitted(false);
-      autoSubmitRef.current = false;
+      setTestOutput('');
+      setTestInput('');
       
-      // Start timer for next question
+      // Reset timer for next question
       const startTime = Date.now();
       setQuestionStartTime(startTime);
+      setElapsedTime(0);
+      setTimerRunning(true);
       localStorage.setItem(`question_start_${eventId}_${nextQuestion.id}`, startTime.toString());
-      
-      // Set remaining time for next question
-      if (nextQuestion.timeLimitMinutes) {
-        const timeLimitSeconds = nextQuestion.timeLimitMinutes * 60;
-        setRemainingTime(timeLimitSeconds);
-      }
     } else {
       // No more questions
       alert('All questions completed! Redirecting to dashboard...');
@@ -48,48 +46,6 @@ export default function CodingEnvironment() {
     }
   }, [event, selectedQuestion, eventId, navigate]);
 
-  const handleAutoSubmit = useCallback(async () => {
-    if (autoSubmitRef.current || !selectedQuestion) return;
-    
-    // Save code even if empty
-    if (selectedQuestion) {
-      localStorage.setItem(`code_${eventId}_${selectedQuestion.id}`, code);
-    }
-    
-    // If no code, just move to next question
-    if (!code.trim()) {
-      setTimeout(() => {
-        moveToNextQuestion();
-      }, 1000);
-      return;
-    }
-    
-    autoSubmitRef.current = true;
-    setAutoSubmitted(true);
-    setSubmitting(true);
-    
-    try {
-      const response = await api.post(`/submissions/events/${eventId}/questions/${selectedQuestion.id}`, {
-        code,
-        language: event?.language || 'python',
-      });
-
-      setSubmissionResult(response.data.submission);
-      
-      // Move to next question after 2 seconds
-      setTimeout(() => {
-        moveToNextQuestion();
-      }, 2000);
-    } catch (error: any) {
-      console.error('Auto-submit error:', error);
-      // Still move to next question even if submission fails
-      setTimeout(() => {
-        moveToNextQuestion();
-      }, 2000);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [selectedQuestion, code, eventId, event?.language, moveToNextQuestion]);
 
   const fetchEventData = useCallback(async () => {
     if (!eventId) {
@@ -137,14 +93,14 @@ export default function CodingEnvironment() {
           setQuestionStartTime(startTime);
           localStorage.setItem(`question_start_${eventId}_${firstQuestion.id}`, startTime.toString());
         }
-        // Initialize remaining time
-        if (firstQuestion.timeLimitMinutes) {
-          const elapsed = storedStartTime ? Math.floor((Date.now() - parseInt(storedStartTime)) / 1000) : 0;
-          const timeLimitSeconds = firstQuestion.timeLimitMinutes * 60;
-          setRemainingTime(Math.max(0, timeLimitSeconds - elapsed));
+        // Initialize elapsed time
+        if (storedStartTime) {
+          const elapsed = Math.floor((Date.now() - parseInt(storedStartTime)) / 1000);
+          setElapsedTime(elapsed);
         } else {
-          setRemainingTime(null);
+          setElapsedTime(0);
         }
+        setTimerRunning(true);
       } else {
         alert('This event has no questions yet. Please contact the administrator.');
         setLoading(false);
@@ -179,25 +135,44 @@ export default function CodingEnvironment() {
     }
   }, [code, selectedQuestion, eventId]);
 
-  // Timer for question time limit
+  // Timer that counts up (no limit, stops when code is correct)
   useEffect(() => {
+    if (!timerRunning || !questionStartTime) {
+      return;
+    }
+
     const interval = setInterval(() => {
-      if (questionStartTime && selectedQuestion?.timeLimitMinutes) {
-        const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
-        const timeLimitSeconds = selectedQuestion.timeLimitMinutes * 60;
-        const remaining = Math.max(0, timeLimitSeconds - elapsed);
-        setRemainingTime(remaining);
-        
-        // Auto-submit when time expires (even if code is empty)
-        if (remaining === 0 && !autoSubmitRef.current) {
-          handleAutoSubmit();
-        }
-      }
+      const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
+      setElapsedTime(elapsed);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [questionStartTime, selectedQuestion, code, handleAutoSubmit]);
+  }, [questionStartTime, timerRunning]);
 
+
+  const handleTestCode = async () => {
+    if (!code.trim()) {
+      alert('Please write some code before testing');
+      return;
+    }
+
+    setTesting(true);
+    setTestOutput('');
+
+    try {
+      const response = await api.post('/submissions/test', {
+        code,
+        language: event.language.toLowerCase(),
+        input: testInput,
+      });
+
+      setTestOutput(response.data.output || 'No output');
+    } catch (error: any) {
+      setTestOutput(`Error: ${error.response?.data?.error || error.message || 'Execution failed'}`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!code.trim()) {
@@ -217,11 +192,15 @@ export default function CodingEnvironment() {
       const response = await api.post(`/submissions/events/${eventId}/questions/${selectedQuestion.id}`, {
         code,
         language: event.language,
+        questionStartTime: questionStartTime || Date.now(),
       });
 
       setSubmissionResult(response.data.submission);
+      
+      // Stop timer if code is correct
       if (response.data.submission.verdict === 'ACCEPTED') {
-        alert('Congratulations! Your solution is correct!');
+        setTimerRunning(false);
+        alert(`Congratulations! Your solution is correct! Time taken: ${formatTime(response.data.submission.timeTakenSeconds || elapsedTime)}`);
       }
       
       // Option to move to next question after manual submit
@@ -245,7 +224,8 @@ export default function CodingEnvironment() {
     
     setSelectedQuestion(question);
     setSubmissionResult(null);
-    setAutoSubmitted(false);
+    setTestOutput('');
+    setTestInput('');
     
     // Load saved code for this question if exists
     const savedCode = localStorage.getItem(`code_${eventId}_${question.id}`);
@@ -258,19 +238,17 @@ export default function CodingEnvironment() {
     // Start timer for selected question
     const storedStartTime = localStorage.getItem(`question_start_${eventId}_${question.id}`);
     if (storedStartTime) {
-      setQuestionStartTime(parseInt(storedStartTime));
-      const elapsed = Math.floor((Date.now() - parseInt(storedStartTime)) / 1000);
-      const timeLimitSeconds = question.timeLimitMinutes * 60;
-      setRemainingTime(Math.max(0, timeLimitSeconds - elapsed));
+      const startTime = parseInt(storedStartTime);
+      setQuestionStartTime(startTime);
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
     } else {
       const startTime = Date.now();
       setQuestionStartTime(startTime);
+      setElapsedTime(0);
       localStorage.setItem(`question_start_${eventId}_${question.id}`, startTime.toString());
-      if (question.timeLimitMinutes) {
-        const timeLimitSeconds = question.timeLimitMinutes * 60;
-        setRemainingTime(timeLimitSeconds);
-      }
     }
+    setTimerRunning(true);
   };
 
   const formatTime = (seconds: number) => {
@@ -318,18 +296,16 @@ export default function CodingEnvironment() {
           </div>
           <div className="text-right">
             <div className="text-sm text-gray-600 mb-1">
-              {selectedQuestion ? `Time Remaining (Q${event.questions.findIndex((q: any) => q.id === selectedQuestion.id) + 1})` : 'Time Remaining'}
+              {selectedQuestion ? `Time Elapsed (Q${event.questions.findIndex((q: any) => q.id === selectedQuestion.id) + 1})` : 'Time Elapsed'}
             </div>
             <div className={`text-2xl font-bold ${
-              remainingTime !== null && remainingTime < 60 ? 'text-red-600' : 
-              remainingTime !== null && remainingTime < 300 ? 'text-orange-600' : 
-              'text-gray-800'
+              timerRunning ? 'text-blue-600' : 'text-green-600'
             }`}>
-              {remainingTime !== null ? formatTime(remainingTime) : 'N/A'}
+              {formatTime(elapsedTime)}
             </div>
-            {selectedQuestion?.timeLimitMinutes && (
-              <div className="text-xs text-gray-500 mt-1">
-                Limit: {selectedQuestion.timeLimitMinutes} min
+            {!timerRunning && (
+              <div className="text-xs text-green-600 mt-1">
+                ✓ Solution Accepted
               </div>
             )}
           </div>
@@ -351,9 +327,6 @@ export default function CodingEnvironment() {
                   }`}
                 >
                   <div className="font-semibold text-gray-800">Question {idx + 1}: {q.title}</div>
-                  {q.timeLimitMinutes && (
-                    <div className="text-sm text-gray-600 mt-1">Time Limit: {q.timeLimitMinutes} minutes</div>
-                  )}
                 </button>
               ))}
             </div>
@@ -406,19 +379,46 @@ export default function CodingEnvironment() {
               />
             </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !code.trim() || (remainingTime !== null && remainingTime <= 0)}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? 'Submitting...' : remainingTime !== null && remainingTime <= 0 ? 'Time Up! (Auto-submitted)' : 'Submit Code'}
-            </button>
-            
-            {remainingTime !== null && remainingTime <= 0 && autoSubmitted && (
-              <div className="mt-2 text-sm text-orange-600 font-semibold">
-                ⏰ Time expired! Answer auto-saved. Moving to next question...
+            {/* Test Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Test Input (Optional)
+              </label>
+              <textarea
+                value={testInput}
+                onChange={(e) => setTestInput(e.target.value)}
+                rows={2}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter test input here..."
+              />
+            </div>
+
+            {/* Test Output */}
+            {testOutput && (
+              <div className="mb-4 p-3 bg-gray-100 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Output:
+                </label>
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap">{testOutput}</pre>
               </div>
             )}
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <button
+                onClick={handleTestCode}
+                disabled={testing || !code.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {testing ? 'Running...' : 'Run Code'}
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !code.trim()}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Submitting...' : 'Submit Code'}
+              </button>
+            </div>
 
             {submissionResult && (
               <div className={`mt-4 p-4 rounded-lg ${

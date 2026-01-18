@@ -247,7 +247,6 @@ router.get('/:eventId', authenticate, requireStudent, async (req: Request, res: 
         description: true,
         sampleInput: true,
         sampleOutput: true,
-        timeLimitMinutes: true,
       },
     });
 
@@ -586,7 +585,7 @@ adminRouter.post(
     body('testCases.*.input').notEmpty().withMessage('Test case input is required'),
     body('testCases.*.expectedOutput').notEmpty().withMessage('Test case expected output is required'),
     body('testCases.*.score').isInt({ min: 1 }).withMessage('Test case score must be a positive integer'),
-    body('timeLimitMinutes').optional().isInt({ min: 1, max: 60 }).withMessage('Time limit must be between 1 and 60 minutes'),
+    body('correctAnswer').optional().trim(),
   ],
   async (req: express.Request, res: express.Response) => {
     try {
@@ -596,19 +595,15 @@ adminRouter.post(
       }
 
       const eventId = req.params.eventId;
-      const { title, description, sampleInput, sampleOutput, testCases, timeLimitMinutes } = req.body;
+      const { title, description, sampleInput, sampleOutput, testCases, correctAnswer } = req.body;
 
-      // Check if event exists and is in DRAFT
+      // Check if event exists (can add questions to DRAFT or ACTIVE events)
       const event = await prisma.event.findUnique({
         where: { id: eventId },
       });
 
       if (!event) {
         return res.status(404).json({ error: 'Event not found' });
-      }
-
-      if (event.status !== 'DRAFT') {
-        return res.status(400).json({ error: 'Questions can only be added to DRAFT events' });
       }
 
       const question = await prisma.question.create({
@@ -619,7 +614,7 @@ adminRouter.post(
           sampleInput: sampleInput || null,
           sampleOutput: sampleOutput || null,
           testCases: testCases,
-          timeLimitMinutes: timeLimitMinutes || 5, // Default 5 minutes if not provided
+          correctAnswer: correctAnswer || null,
         },
       });
 
@@ -627,6 +622,47 @@ adminRouter.post(
     } catch (error: any) {
       console.error('Add question error:', error);
       res.status(500).json({ error: 'Failed to add question' });
+    }
+  }
+);
+
+// Update question (admin can edit questions anytime)
+adminRouter.put(
+  '/:eventId/questions/:questionId',
+  [
+    body('title').optional().trim().notEmpty(),
+    body('description').optional().trim().notEmpty(),
+    body('sampleInput').optional(),
+    body('sampleOutput').optional(),
+    body('testCases').optional().isArray(),
+    body('correctAnswer').optional().trim(),
+  ],
+  async (req: express.Request, res: express.Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { eventId, questionId } = req.params;
+      const updateData: any = {};
+
+      if (req.body.title) updateData.title = req.body.title;
+      if (req.body.description) updateData.description = req.body.description;
+      if (req.body.sampleInput !== undefined) updateData.sampleInput = req.body.sampleInput || null;
+      if (req.body.sampleOutput !== undefined) updateData.sampleOutput = req.body.sampleOutput || null;
+      if (req.body.testCases) updateData.testCases = req.body.testCases;
+      if (req.body.correctAnswer !== undefined) updateData.correctAnswer = req.body.correctAnswer || null;
+
+      const question = await prisma.question.update({
+        where: { id: questionId },
+        data: updateData,
+      });
+
+      res.json({ question });
+    } catch (error: any) {
+      console.error('Update question error:', error);
+      res.status(500).json({ error: 'Failed to update question' });
     }
   }
 );

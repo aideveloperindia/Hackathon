@@ -8,7 +8,7 @@ interface Question {
   sampleInput: string;
   sampleOutput: string;
   testCases: Array<{ input: string; expectedOutput: string; score: number }>;
-  timeLimitMinutes: number;
+  correctAnswer: string;
 }
 
 export default function ConductEvent() {
@@ -27,7 +27,7 @@ export default function ConductEvent() {
     sampleInput: '',
     sampleOutput: '',
     testCases: [],
-    timeLimitMinutes: 5, // Default 5 minutes
+    correctAnswer: '',
   });
   const [currentTestCase, setCurrentTestCase] = useState({
     input: '',
@@ -82,7 +82,7 @@ export default function ConductEvent() {
         sampleInput: '',
         sampleOutput: '',
         testCases: [],
-        timeLimitMinutes: 5,
+        correctAnswer: '',
       });
       alert('Question added successfully!');
     } catch (error: any) {
@@ -251,17 +251,15 @@ export default function ConductEvent() {
             </div>
 
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">Time Limit (Minutes) *</label>
-              <input
-                type="number"
-                min="1"
-                max="60"
-                value={currentQuestion.timeLimitMinutes}
-                onChange={(e) => setCurrentQuestion({ ...currentQuestion, timeLimitMinutes: parseInt(e.target.value) || 5 })}
+              <label className="block text-gray-700 font-semibold mb-2">Correct Answer/Output *</label>
+              <textarea
+                value={currentQuestion.correctAnswer}
+                onChange={(e) => setCurrentQuestion({ ...currentQuestion, correctAnswer: e.target.value })}
+                rows={4}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="5"
+                placeholder="Enter the expected output/correct answer for this question..."
               />
-              <p className="text-sm text-gray-500 mt-1">Time allowed for students to solve this question (1-60 minutes)</p>
+              <p className="text-sm text-gray-500 mt-1">This is the correct output that student code should produce. Student submissions will be compared against this.</p>
             </div>
 
             <div className="border-t pt-6">

@@ -90,15 +90,16 @@ enum EventStatus {
 
 // Questions for events
 model Question {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  eventId     String   @map("event_id") @db.ObjectId
-  title       String
-  description String
-  sampleInput String?  @map("sample_input")
-  sampleOutput String? @map("sample_output")
-  testCases   Json     @map("test_cases") // Array of {input, expectedOutput, score}
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId       String   @map("event_id") @db.ObjectId
+  title         String
+  description   String
+  sampleInput   String?  @map("sample_input")
+  sampleOutput  String?  @map("sample_output")
+  testCases     Json     @map("test_cases") // Array of {input, expectedOutput, score}
+  correctAnswer String?  @map("correct_answer") // Admin-provided correct answer/output
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   submissions Submission[]
