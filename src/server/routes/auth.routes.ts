@@ -19,6 +19,7 @@ router.post(
     body('year').isInt({ min: 1, max: 4 }).withMessage('Year must be between 1 and 4'),
     body('branch').trim().notEmpty().withMessage('Branch is required'),
     body('section').trim().notEmpty().withMessage('Section is required'),
+    body('phoneNumber').trim().notEmpty().withMessage('Phone number is required'),
     body('password').notEmpty().withMessage('Password is required'),
   ],
   async (req: Request, res: Response) => {
@@ -28,13 +29,14 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { name, htNo, year, branch, section, password } = req.body;
+      const { name, htNo, year, branch, section, phoneNumber, password } = req.body;
 
       // Trim and normalize inputs - accept any HT number format
       const trimmedHtNo = htNo?.trim().toUpperCase();
       const trimmedName = name?.trim();
       const trimmedBranch = branch?.trim();
       const trimmedSection = section?.trim().toUpperCase();
+      const trimmedPhoneNumber = phoneNumber?.trim();
 
       console.log('Registration attempt - Name:', trimmedName, 'HT No:', trimmedHtNo);
 
@@ -44,6 +46,10 @@ router.post(
 
       if (!trimmedName || trimmedName.length === 0) {
         return res.status(400).json({ error: 'Name is required' });
+      }
+
+      if (!trimmedPhoneNumber || trimmedPhoneNumber.length === 0) {
+        return res.status(400).json({ error: 'Phone number is required' });
       }
 
       // Check if HT number already exists in master_students or create new
@@ -62,6 +68,7 @@ router.post(
             branch: trimmedBranch,
             section: trimmedSection,
             year: parseInt(year),
+            phoneNumber: trimmedPhoneNumber,
           },
         });
         console.log('✅ Created master student record');
@@ -74,6 +81,7 @@ router.post(
             branch: trimmedBranch,
             section: trimmedSection,
             year: parseInt(year),
+            phoneNumber: trimmedPhoneNumber,
           },
         });
         console.log('✅ Master record updated');

@@ -10,6 +10,7 @@ export default function StudentRegister() {
     year: '',
     branch: '',
     section: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
   });
@@ -41,6 +42,7 @@ export default function StudentRegister() {
         year: parseInt(formData.year),
         branch: formData.branch.trim(),
         section: formData.section.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
         password: formData.password,
       });
 
@@ -176,6 +178,24 @@ export default function StudentRegister() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your section"
             />
+          </div>
+
+          <div>
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              id="phoneNumber"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your 10-digit phone number"
+              maxLength={10}
+            />
+            <p className="text-xs text-gray-500 mt-1">10 digits starting with 6-9</p>
           </div>
 
           <div>

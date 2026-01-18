@@ -25,19 +25,17 @@ export default function StudentDashboard() {
       const response = await api.get('/student/dashboard');
       setDashboardData(response.data);
       
-      // Check if student needs to complete profile
+      // Only redirect to complete-profile for OAuth users (Google sign-in)
+      // Regular registration users have all details collected during registration
       const student = response.data?.student;
       console.log('Dashboard student data:', student);
       
+      // Only check for OAuth users who need to complete profile
       if (student && (
         student.htNo?.startsWith('OAUTH-') ||
-        student.branch === 'OAuth' ||
-        !student.phoneNumber
+        student.branch === 'OAuth'
       )) {
-        console.log('Redirecting to complete-profile - incomplete profile detected');
-        console.log('  - HT No:', student.htNo);
-        console.log('  - Branch:', student.branch);
-        console.log('  - Phone:', student.phoneNumber);
+        console.log('Redirecting to complete-profile - OAuth user needs to complete profile');
         navigate('/complete-profile', { replace: true });
         return;
       }
