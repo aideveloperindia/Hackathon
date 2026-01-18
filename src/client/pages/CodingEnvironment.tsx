@@ -406,14 +406,24 @@ export default function CodingEnvironment() {
                 height="100%"
                 language={language}
                 value={code}
-                onChange={(value) => setCode(value || '')}
-                theme="vs-dark"
-                loading={<div className="flex items-center justify-center h-full text-gray-600">Loading editor...</div>}
+                onChange={(value) => {
+                  const newCode = value || '';
+                  setCode(newCode);
+                  // Auto-save to localStorage
+                  if (selectedQuestion) {
+                    localStorage.setItem(`code_${eventId}_${selectedQuestion.id}`, newCode);
+                  }
+                }}
+                theme="vs-light"
+                loading={<div className="flex items-center justify-center h-full text-gray-600"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div><p>Loading editor...</p></div></div>}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
                   wordWrap: 'on',
                   automaticLayout: true,
+                  readOnly: false, // Ensure editor is not read-only
+                  scrollBeyondLastLine: false,
+                  lineNumbers: 'on',
                 }}
               />
             </div>
