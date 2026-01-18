@@ -159,10 +159,23 @@ export default function CodingEnvironment() {
       return;
     }
 
-    // Validate code is not just a number or output value
+    // Validate code is not just a number, output value, or language name
     const trimmedCode = code.trim();
     if (/^\d+$/.test(trimmedCode)) {
-      alert('Please write actual code, not just the output number. For example:\n\na = int(input())\nb = int(input())\nprint(a + b)');
+      alert('❌ Please write actual code, not just the output number!\n\n✅ Example for "Sum of Two Numbers":\n\na = int(input())\nb = int(input())\nprint(a + b)');
+      return;
+    }
+    
+    // Check if user typed just the language name
+    const languageLower = event.language.toLowerCase();
+    if (trimmedCode.toLowerCase() === languageLower || trimmedCode.toLowerCase() === 'python' || trimmedCode.toLowerCase() === 'java' || trimmedCode.toLowerCase() === 'c') {
+      alert(`❌ Please write actual code, not just the language name "${trimmedCode}"!\n\n✅ Example for "Sum of Two Numbers":\n\na = int(input())\nb = int(input())\nprint(a + b)`);
+      return;
+    }
+    
+    // Check if code is too short (likely not actual code)
+    if (trimmedCode.length < 10) {
+      alert('❌ The code seems too short. Please write complete code!\n\n✅ Example for "Sum of Two Numbers":\n\na = int(input())\nb = int(input())\nprint(a + b)');
       return;
     }
 
