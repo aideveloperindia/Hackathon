@@ -127,16 +127,15 @@ router.get('/dashboard', async (req: Request, res: Response) => {
             },
           });
 
-          const totalScore = submissions.reduce((sum, s) => sum + s.score, 0);
-          const firstSubmission = submissions[0];
-          const timeTaken = firstSubmission
-            ? Math.floor((firstSubmission.submittedAt.getTime() - activeEvent.startTime!.getTime()) / 1000)
-            : 0;
+          // Only count ACCEPTED submissions
+          const acceptedSubmissions = submissions.filter(s => s.verdict === 'ACCEPTED');
+          const totalScore = acceptedSubmissions.reduce((sum, s) => sum + s.score, 0);
+          const totalTimeTaken = acceptedSubmissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
 
           return {
             studentId: participant.studentId,
             totalScore,
-            timeTaken,
+            timeTaken: totalTimeTaken,
           };
         })
       );

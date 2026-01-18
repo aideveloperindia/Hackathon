@@ -13,6 +13,7 @@ import Leaderboard from './pages/Leaderboard';
 import VerifyEmail from './pages/VerifyEmail';
 import AuthCallback from './pages/AuthCallback';
 import ConductEvent from './pages/ConductEvent';
+import EditEventQuestions from './pages/EditEventQuestions';
 import CompleteStudentProfile from './pages/CompleteStudentProfile';
 import Footer from './components/Footer';
 
@@ -105,6 +106,15 @@ function App() {
                 element={
                   <PrivateRoute requireRole="admin">
                     <ConductEvent />
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/admin/edit-event/:eventId"
+                element={
+                  <PrivateRoute requireRole="admin">
+                    <EditEventQuestions />
                   </PrivateRoute>
                 }
               />

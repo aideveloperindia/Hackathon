@@ -88,11 +88,11 @@ router.get('/dashboard', async (req, res) => {
             },
           });
 
-          const totalScore = submissions.reduce((sum, s) => sum + s.score, 0);
-          const firstSubmission = submissions[0];
-          const timeTaken = firstSubmission && activeEvent.startTime
-            ? Math.floor((firstSubmission.submittedAt.getTime() - activeEvent.startTime.getTime()) / 1000)
-            : 0;
+          // Only count ACCEPTED submissions for scoring
+          const acceptedSubmissions = submissions.filter(s => s.verdict === 'ACCEPTED');
+          const totalScore = acceptedSubmissions.reduce((sum, s) => sum + s.score, 0);
+          // Sum up all timeTakenSeconds from accepted submissions
+          const totalTimeTaken = acceptedSubmissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
 
           return {
             studentId: participant.studentId,
@@ -102,7 +102,7 @@ router.get('/dashboard', async (req, res) => {
             section: participant.student.masterStudent.section,
             year: participant.student.masterStudent.year,
             totalScore,
-            timeTaken,
+            timeTaken: totalTimeTaken,
           };
         })
       );

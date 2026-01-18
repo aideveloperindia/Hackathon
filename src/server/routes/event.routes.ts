@@ -304,20 +304,20 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
     }
 
     // Calculate scores for all participants
+    // Rank by: 1) Total score (highest first), 2) Total time taken (fastest first)
     const participantScores = await Promise.all(
       event.participants.map(async (participant) => {
         const submissions = await prisma.submission.findMany({
           where: {
             eventId: event.id,
             studentId: participant.studentId,
+            verdict: 'ACCEPTED', // Only count accepted submissions
           },
         });
 
         const totalScore = submissions.reduce((sum, s) => sum + s.score, 0);
-        const firstSubmission = submissions[0];
-        const timeTaken = firstSubmission && event.startTime
-          ? Math.floor((firstSubmission.submittedAt.getTime() - event.startTime.getTime()) / 1000)
-          : 0;
+        // Sum up all timeTakenSeconds from accepted submissions (time when each question was solved)
+        const totalTimeTaken = submissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
 
         return {
           studentId: participant.studentId,
@@ -327,15 +327,17 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
           section: participant.student.masterStudent.section,
           year: participant.student.masterStudent.year,
           totalScore,
-          timeTaken,
+          timeTaken: totalTimeTaken, // Total time across all questions
         };
       })
     );
 
+    // Sort: Highest score first, then fastest time (lowest time) first
     participantScores.sort((a, b) => {
       if (b.totalScore !== a.totalScore) {
         return b.totalScore - a.totalScore;
       }
+      // If scores are equal, rank by time (fastest = lowest time = first)
       return a.timeTaken - b.timeTaken;
     });
 
@@ -625,6 +627,23 @@ adminRouter.post(
     }
   }
 );
+
+// Get questions for an event (admin)
+adminRouter.get('/:eventId/questions', async (req: express.Request, res: express.Response) => {
+  try {
+    const eventId = req.params.eventId;
+
+    const questions = await prisma.question.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ questions });
+  } catch (error: any) {
+    console.error('Get questions error:', error);
+    res.status(500).json({ error: 'Failed to fetch questions' });
+  }
+});
 
 // Update question (admin can edit questions anytime)
 adminRouter.put(
