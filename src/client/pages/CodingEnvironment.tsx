@@ -460,10 +460,13 @@ export default function CodingEnvironment() {
               <textarea
                 value={testInput}
                 onChange={(e) => setTestInput(e.target.value)}
-                rows={2}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter test input here..."
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                placeholder="Enter test input here (one value per line)...&#10;Example for Sum of Two Numbers:&#10;5&#10;10"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Tip: Enter each value on a separate line. For multiple inputs, use newlines, not commas.
+              </p>
             </div>
 
             {/* Test Output */}

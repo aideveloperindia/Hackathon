@@ -49,11 +49,20 @@ export async function executeCodeWithJDoodle(
     throw new Error(`Unsupported language: ${language}. Supported: ${Object.keys(languageMap).join(', ')}`);
   }
 
+  // Normalize input: convert commas to newlines for multi-value inputs
+  // This handles cases where input might be "5,10,3" instead of "5\n10\n3"
+  let normalizedInput = (input || '').trim();
+  if (normalizedInput && normalizedInput.includes(',') && !normalizedInput.includes('\n')) {
+    // Convert comma-separated to newline-separated
+    normalizedInput = normalizedInput.split(',').map(v => v.trim()).join('\n');
+    console.log('Converted comma-separated input to newlines:', normalizedInput);
+  }
+
   const requestData: JDoodleRequest = {
     script: trimmedCode,
     language: langConfig.language,
     versionIndex: langConfig.versionIndex,
-    stdin: input || '',
+    stdin: normalizedInput,
   };
 
   console.log('JDoodle request:', {

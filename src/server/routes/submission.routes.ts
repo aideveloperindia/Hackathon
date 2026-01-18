@@ -137,10 +137,18 @@ router.post(
       for (let i = 0; i < testCases.length; i++) {
         const testCase = testCases[i];
         try {
+          // Normalize test case input: ensure it uses newlines, not commas
+          let testInput = (testCase.input || '').trim();
+          if (testInput && testInput.includes(',') && !testInput.includes('\n')) {
+            // Convert comma-separated to newline-separated
+            testInput = testInput.split(',').map((v: string) => v.trim()).join('\n');
+            console.log(`Test case ${i + 1}: Converted comma-separated input to newlines`);
+          }
+
           const jdoodleResult = await executeCodeWithJDoodle(
             code,
             language,
-            testCase.input || ''
+            testInput
           );
 
           const studentOutput = normalizeOutput(jdoodleResult.output);
