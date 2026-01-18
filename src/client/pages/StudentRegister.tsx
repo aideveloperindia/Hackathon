@@ -5,8 +5,11 @@ import api from '../utils/api';
 export default function StudentRegister() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullName: '',
-    rollNumber: '',
+    name: '',
+    htNo: '',
+    year: '',
+    branch: '',
+    section: '',
     password: '',
     confirmPassword: '',
   });
@@ -14,7 +17,7 @@ export default function StudentRegister() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors([]);
   };
@@ -33,8 +36,11 @@ export default function StudentRegister() {
 
     try {
       const response = await api.post('/auth/student/register', {
-        fullName: formData.fullName.trim(),
-        rollNumber: formData.rollNumber.trim().toUpperCase(),
+        name: formData.name.trim(),
+        htNo: formData.htNo.trim().toUpperCase(),
+        year: parseInt(formData.year),
+        branch: formData.branch.trim(),
+        section: formData.section.trim(),
         password: formData.password,
       });
 
@@ -89,34 +95,86 @@ export default function StudentRegister() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name *
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              Name *
             </label>
             <input
               type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
+              id="name"
+              name="name"
+              value={formData.name}
               onChange={handleChange}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your full name"
+              placeholder="Enter your name"
             />
           </div>
 
           <div>
-            <label htmlFor="rollNumber" className="block text-sm font-medium text-gray-700 mb-2">
-              Roll Number *
+            <label htmlFor="htNo" className="block text-sm font-medium text-gray-700 mb-2">
+              HT No. *
             </label>
             <input
               type="text"
-              id="rollNumber"
-              name="rollNumber"
-              value={formData.rollNumber}
-              onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value.toUpperCase() })}
+              id="htNo"
+              name="htNo"
+              value={formData.htNo}
+              onChange={(e) => setFormData({ ...formData, htNo: e.target.value.toUpperCase() })}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your roll number"
+              placeholder="Enter your HT number"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-2">
+              Year *
+            </label>
+            <select
+              id="year"
+              name="year"
+              value={formData.year}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select Year</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="branch" className="block text-sm font-medium text-gray-700 mb-2">
+              Branch *
+            </label>
+            <input
+              type="text"
+              id="branch"
+              name="branch"
+              value={formData.branch}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your branch"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="section" className="block text-sm font-medium text-gray-700 mb-2">
+              Section *
+            </label>
+            <input
+              type="text"
+              id="section"
+              name="section"
+              value={formData.section}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your section"
             />
           </div>
 

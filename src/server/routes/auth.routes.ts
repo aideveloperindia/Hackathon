@@ -10,12 +10,15 @@ import axios from 'axios';
 
 const router = express.Router();
 
-// Student Registration - Simplified: Full Name, Roll Number, Password (No validation on roll number)
+// Student Registration - Name, HT No, Year, Branch, Section, Password
 router.post(
   '/student/register',
   [
-    body('fullName').trim().notEmpty().withMessage('Full name is required'),
-    body('rollNumber').trim().notEmpty().withMessage('Roll number is required'),
+    body('name').trim().notEmpty().withMessage('Name is required'),
+    body('htNo').trim().notEmpty().withMessage('HT No is required'),
+    body('year').isInt({ min: 1, max: 4 }).withMessage('Year must be between 1 and 4'),
+    body('branch').trim().notEmpty().withMessage('Branch is required'),
+    body('section').trim().notEmpty().withMessage('Section is required'),
     body('password').notEmpty().withMessage('Password is required'),
   ],
   async (req: Request, res: Response) => {
@@ -25,64 +28,69 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { fullName, rollNumber, password } = req.body;
+      const { name, htNo, year, branch, section, password } = req.body;
 
-      // Trim and normalize inputs - accept any roll number format
-      const trimmedRollNumber = rollNumber?.trim().toUpperCase();
-      const trimmedFullName = fullName?.trim();
+      // Trim and normalize inputs - accept any HT number format
+      const trimmedHtNo = htNo?.trim().toUpperCase();
+      const trimmedName = name?.trim();
+      const trimmedBranch = branch?.trim();
+      const trimmedSection = section?.trim().toUpperCase();
 
-      console.log('Registration attempt - Name:', trimmedFullName, 'Roll Number:', trimmedRollNumber);
+      console.log('Registration attempt - Name:', trimmedName, 'HT No:', trimmedHtNo);
 
-      if (!trimmedRollNumber || trimmedRollNumber.length === 0) {
-        return res.status(400).json({ error: 'Roll number is required' });
+      if (!trimmedHtNo || trimmedHtNo.length === 0) {
+        return res.status(400).json({ error: 'HT No is required' });
       }
 
-      if (!trimmedFullName || trimmedFullName.length === 0) {
-        return res.status(400).json({ error: 'Full name is required' });
+      if (!trimmedName || trimmedName.length === 0) {
+        return res.status(400).json({ error: 'Name is required' });
       }
 
-      // Check if roll number already exists in master_students or create new
-      // No format validation - accept any roll number
+      // Check if HT number already exists in master_students or create new
+      // No format validation - accept any HT number
       let masterStudent = await prisma.masterStudent.findUnique({
-        where: { htNo: trimmedRollNumber },
+        where: { htNo: trimmedHtNo },
       });
 
       if (!masterStudent) {
-        // Create new master student record with any roll number
-        console.log('Creating new master student record for Roll Number:', trimmedRollNumber);
+        // Create new master student record
+        console.log('Creating new master student record for HT No:', trimmedHtNo);
         masterStudent = await prisma.masterStudent.create({
           data: {
-            htNo: trimmedRollNumber,
-            name: trimmedFullName,
-            branch: 'N/A', // Default values
-            section: 'N/A',
-            year: 1,
+            htNo: trimmedHtNo,
+            name: trimmedName,
+            branch: trimmedBranch,
+            section: trimmedSection,
+            year: parseInt(year),
           },
         });
         console.log('✅ Created master student record');
       } else {
-        // Update name if different
-        if (masterStudent.name !== trimmedFullName) {
-          await prisma.masterStudent.update({
-            where: { id: masterStudent.id },
-            data: { name: trimmedFullName },
-          });
-        }
-        console.log('✅ Master record found');
+        // Update all fields if different
+        await prisma.masterStudent.update({
+          where: { id: masterStudent.id },
+          data: {
+            name: trimmedName,
+            branch: trimmedBranch,
+            section: trimmedSection,
+            year: parseInt(year),
+          },
+        });
+        console.log('✅ Master record updated');
       }
 
-      // Check if account already exists for this Roll Number
+      // Check if account already exists for this HT No
       const existingStudent = await prisma.student.findUnique({
         where: { masterStudentId: masterStudent.id },
       });
 
       if (existingStudent) {
-        return res.status(400).json({ error: 'An account already exists for this roll number' });
+        return res.status(400).json({ error: 'An account already exists for this HT number' });
       }
 
       // Create student account with auto-generated email and auto-verified
       const passwordHash = await hashPassword(password);
-      const studentEmail = `${trimmedRollNumber.toLowerCase().replace(/\s+/g, '')}@jits.local`;
+      const studentEmail = `${trimmedHtNo.toLowerCase().replace(/\s+/g, '')}@jits.local`;
 
       const student = await prisma.student.create({
         data: {
@@ -107,9 +115,9 @@ router.post(
       if (error.code === 'P2002') {
         // Prisma unique constraint violation
         if (error.meta?.target?.includes('masterStudentId')) {
-          errorMessage = 'An account already exists for this roll number.';
+          errorMessage = 'An account already exists for this HT number.';
         } else if (error.meta?.target?.includes('email')) {
-          errorMessage = 'An account with this roll number already exists.';
+          errorMessage = 'An account with this HT number already exists.';
         }
       } else if (error.message) {
         errorMessage = error.message;

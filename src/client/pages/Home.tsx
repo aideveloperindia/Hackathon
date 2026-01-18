@@ -20,7 +20,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-            JITS Coding Event Platform
+            Coding portal: a smart online coding platform for JITS campus
           </h1>
           <p className="text-gray-600 text-lg mb-12">
             Participate in coding competitions and showcase your skills
@@ -36,16 +36,16 @@ export default function Home() {
                   Get Started
                 </Link>
                 <Link
-                  to="/student/login"
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
-                >
-                  Sign In
-                </Link>
-                <Link
                   to="/admin/login"
                   className="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-4 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
                 >
                   Admin Access
+                </Link>
+                <Link
+                  to="/leaderboard"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                >
+                  Leaderboard
                 </Link>
               </>
             ) : (
