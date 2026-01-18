@@ -179,7 +179,14 @@ export default function CodingEnvironment() {
       return;
     }
 
-    console.log('Testing code:', { code: trimmedCode.substring(0, 100), language: event.language, input: testInput });
+    // Normalize test input: convert commas to newlines if needed
+    let normalizedTestInput = testInput.trim();
+    if (normalizedTestInput && normalizedTestInput.includes(',') && !normalizedTestInput.includes('\n')) {
+      normalizedTestInput = normalizedTestInput.split(',').map(v => v.trim()).join('\n');
+      console.log('Converted comma-separated test input to newlines');
+    }
+
+    console.log('Testing code:', { code: trimmedCode.substring(0, 100), language: event.language, input: normalizedTestInput });
     setTesting(true);
     setTestOutput('');
 
@@ -187,7 +194,7 @@ export default function CodingEnvironment() {
       const response = await api.post('/submissions/test', {
         code: trimmedCode,
         language: event.language.toLowerCase(),
-        input: testInput,
+        input: normalizedTestInput,
       });
 
       console.log('Test response:', response.data);
