@@ -48,10 +48,12 @@ router.get('/dashboard', async (req, res) => {
       },
     });
 
-    // Get all draft events
+    // Get all draft events created by this admin
+    const adminId = req.user!.userId;
     const draftEvents = await prisma.event.findMany({
       where: {
         status: 'DRAFT',
+        createdByAdminId: adminId, // Only show events created by logged-in admin
       },
       include: {
         _count: {

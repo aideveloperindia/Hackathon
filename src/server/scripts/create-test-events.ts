@@ -121,17 +121,23 @@ async function getAdmin() {
 }
 
 async function createEvent(adminId: string, title: string, language: string, description: string) {
-  // Check if event already exists
+  // Check if event with same title and language exists in DRAFT status
   const existing = await prisma.event.findFirst({
     where: {
       title,
       language,
+      status: 'DRAFT',
       createdByAdminId: adminId,
     },
   });
 
   if (existing) {
-    console.log(`⚠️  Event "${title}" already exists, skipping...`);
+    console.log(`⚠️  Event "${title}" already exists in DRAFT, deleting old questions and updating...`);
+    // Delete existing questions and recreate them
+    await prisma.question.deleteMany({
+      where: { eventId: existing.id },
+    });
+    console.log(`  🗑️  Deleted old questions from existing event`);
     return existing;
   }
 
