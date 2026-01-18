@@ -78,11 +78,8 @@ export default function CodingEnvironment() {
         
         // Load saved code for first question if exists
         const savedCode = localStorage.getItem(`code_${eventId}_${firstQuestion.id}`);
-        if (savedCode) {
-          setCode(savedCode);
-        } else {
-          setCode(''); // Initialize with empty string
-        }
+        setCode(savedCode || ''); // Always set code, even if empty
+        console.log('Code initialized:', savedCode ? 'from localStorage' : 'empty string');
         
         // Start timer for first question
         const storedStartTime = localStorage.getItem(`question_start_${eventId}_${firstQuestion.id}`);
@@ -286,8 +283,36 @@ export default function CodingEnvironment() {
   if (!event) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Failed to load event data</p>
+        <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md">
+          <p className="text-red-600 mb-4 text-lg font-semibold">Failed to load event</p>
+          <p className="text-gray-600 mb-4 text-sm">
+            The event may not exist, may not be active, or you may not have joined it yet.
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg mr-2"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate('/student/dashboard')}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event.questions || event.questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-lg shadow-lg">
+          <p className="text-red-600 mb-4 text-lg font-semibold">No Questions Available</p>
+          <p className="text-gray-600 mb-4">This event has no questions yet. Please contact the administrator.</p>
           <button
             onClick={() => navigate('/student/dashboard')}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
