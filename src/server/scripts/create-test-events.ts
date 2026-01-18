@@ -2,12 +2,8 @@
 // Run with: tsx src/server/scripts/create-test-events.ts
 
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import axios from 'axios';
 
 const prisma = new PrismaClient();
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5001/api';
 
 // Test questions data
 const pythonQuestions = [
@@ -110,24 +106,17 @@ const javaQuestions = [
   },
 ];
 
-async function getOrCreateAdmin() {
-  // Find or create admin user
-  let admin = await prisma.admin.findUnique({
-    where: { email: 'admin@jits.local' },
+async function getAdmin() {
+  // Find existing admin user (don't create new one)
+  const admin = await prisma.admin.findFirst({
+    orderBy: { createdAt: 'asc' }, // Get the first admin created
   });
 
   if (!admin) {
-    const passwordHash = await bcrypt.hash('admin123', 10);
-    admin = await prisma.admin.create({
-      data: {
-        name: 'Test Admin',
-        email: 'admin@jits.local',
-        passwordHash,
-      },
-    });
-    console.log('✅ Created admin user: admin@jits.local / admin123');
+    throw new Error('No admin user found. Please create an admin account first.');
   }
 
+  console.log(`✅ Using existing admin: ${admin.email} (${admin.name})`);
   return admin;
 }
 
@@ -195,8 +184,8 @@ async function main() {
   try {
     console.log('🚀 Starting test events creation...\n');
 
-    // Get or create admin
-    const admin = await getOrCreateAdmin();
+    // Get existing admin (don't create new one)
+    const admin = await getAdmin();
     console.log(`📋 Using admin: ${admin.email}\n`);
 
     // Create Python Event
