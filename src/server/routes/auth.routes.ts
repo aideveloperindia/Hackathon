@@ -10,7 +10,7 @@ import axios from 'axios';
 
 const router = express.Router();
 
-// Student Registration - Simplified: Full Name, Roll Number, Password
+// Student Registration - Simplified: Full Name, Roll Number, Password (No validation on roll number)
 router.post(
   '/student/register',
   [
@@ -27,11 +27,11 @@ router.post(
 
       const { fullName, rollNumber, password } = req.body;
 
-      // Trim and normalize inputs
+      // Trim and normalize inputs - accept any roll number format
       const trimmedRollNumber = rollNumber?.trim().toUpperCase();
       const trimmedFullName = fullName?.trim();
 
-      console.log('Registration attempt for Roll Number:', trimmedRollNumber);
+      console.log('Registration attempt - Name:', trimmedFullName, 'Roll Number:', trimmedRollNumber);
 
       if (!trimmedRollNumber || trimmedRollNumber.length === 0) {
         return res.status(400).json({ error: 'Roll number is required' });
@@ -41,13 +41,14 @@ router.post(
         return res.status(400).json({ error: 'Full name is required' });
       }
 
-      // Check if roll number (HT No) exists in master_students or create new
+      // Check if roll number already exists in master_students or create new
+      // No format validation - accept any roll number
       let masterStudent = await prisma.masterStudent.findUnique({
         where: { htNo: trimmedRollNumber },
       });
 
       if (!masterStudent) {
-        // Create new master student record
+        // Create new master student record with any roll number
         console.log('Creating new master student record for Roll Number:', trimmedRollNumber);
         masterStudent = await prisma.masterStudent.create({
           data: {
@@ -81,7 +82,7 @@ router.post(
 
       // Create student account with auto-generated email and auto-verified
       const passwordHash = await hashPassword(password);
-      const studentEmail = `${trimmedRollNumber.toLowerCase()}@jits.local`;
+      const studentEmail = `${trimmedRollNumber.toLowerCase().replace(/\s+/g, '')}@jits.local`;
 
       const student = await prisma.student.create({
         data: {
