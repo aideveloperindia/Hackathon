@@ -177,10 +177,21 @@ router.post(
       }
 
       // Check against admin's correct answer if provided - this locks the answer
+      // Use the first test case input if available, otherwise empty input
       let matchesCorrectAnswer = false;
       if (correctAnswer) {
         try {
-          const jdoodleResult = await executeCodeWithJDoodle(code, language, '');
+          // Use first test case input for correct answer check, or empty if no test cases
+          let correctAnswerInput = '';
+          if (testCases.length > 0 && testCases[0].input) {
+            correctAnswerInput = testCases[0].input.trim();
+            // Normalize: convert commas to newlines if needed
+            if (correctAnswerInput.includes(',') && !correctAnswerInput.includes('\n')) {
+              correctAnswerInput = correctAnswerInput.split(',').map((v: string) => v.trim()).join('\n');
+            }
+          }
+
+          const jdoodleResult = await executeCodeWithJDoodle(code, language, correctAnswerInput);
           const studentOutput = normalizeOutput(jdoodleResult.output);
           const adminAnswer = normalizeOutput(correctAnswer);
           
@@ -191,6 +202,7 @@ router.post(
             totalScore = testCases.reduce((sum: number, tc: any) => sum + (tc.score || 0), 0);
           }
         } catch (error) {
+          console.error('Error checking correct answer:', error);
           // If JDoodle fails, rely on test cases
         }
       }
