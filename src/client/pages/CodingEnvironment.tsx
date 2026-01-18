@@ -13,7 +13,7 @@ export default function CodingEnvironment() {
   const [elapsedTime, setElapsedTime] = useState<number>(0); // Timer that counts up
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [submissionResult, setSubmissionResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with true to show loading initially
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testOutput, setTestOutput] = useState<string>('');
@@ -110,10 +110,16 @@ export default function CodingEnvironment() {
     } catch (error: any) {
       console.error('Error fetching event:', error);
       console.error('Error response:', error.response);
-      const errorMessage = error.response?.data?.error || 'Failed to load event';
-      alert(errorMessage);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to load event';
+      console.error('Error message:', errorMessage);
       setLoading(false);
-      // Don't navigate immediately, let user see the error
+      // Show error but don't navigate immediately - let user see the error
+      alert(`Error loading event: ${errorMessage}\n\nPlease check:\n1. Event exists and is ACTIVE\n2. You have joined the event\n3. Network connection is working`);
     } finally {
       setLoading(false);
     }
