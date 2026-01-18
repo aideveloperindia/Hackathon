@@ -159,19 +159,30 @@ export default function CodingEnvironment() {
       return;
     }
 
+    // Validate code is not just a number or output value
+    const trimmedCode = code.trim();
+    if (/^\d+$/.test(trimmedCode)) {
+      alert('Please write actual code, not just the output number. For example:\n\na = int(input())\nb = int(input())\nprint(a + b)');
+      return;
+    }
+
+    console.log('Testing code:', { code: trimmedCode.substring(0, 100), language: event.language, input: testInput });
     setTesting(true);
     setTestOutput('');
 
     try {
       const response = await api.post('/submissions/test', {
-        code,
+        code: trimmedCode,
         language: event.language.toLowerCase(),
         input: testInput,
       });
 
+      console.log('Test response:', response.data);
       setTestOutput(response.data.output || 'No output');
     } catch (error: any) {
-      setTestOutput(`Error: ${error.response?.data?.error || error.message || 'Execution failed'}`);
+      console.error('Test code error:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Execution failed';
+      setTestOutput(`Error: ${errorMsg}`);
     } finally {
       setTesting(false);
     }

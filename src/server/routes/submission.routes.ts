@@ -27,8 +27,22 @@ router.post(
 
       const { code, language, input } = req.body;
 
+      // Validate code is not empty after trimming
+      const trimmedCode = (code || '').trim();
+      if (!trimmedCode) {
+        return res.status(400).json({ error: 'Code cannot be empty' });
+      }
+
+      // Log for debugging
+      console.log('Test code request:', {
+        codeLength: trimmedCode.length,
+        codePreview: trimmedCode.substring(0, 100),
+        language,
+        hasInput: !!input,
+      });
+
       // Execute code using JDoodle
-      const result = await executeCodeWithJDoodle(code, language, input || '');
+      const result = await executeCodeWithJDoodle(trimmedCode, language, input || '');
 
       res.json({
         output: result.output,

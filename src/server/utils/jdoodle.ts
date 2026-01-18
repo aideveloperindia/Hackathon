@@ -38,23 +38,43 @@ export async function executeCodeWithJDoodle(
     throw new Error('JDoodle API credentials not configured');
   }
 
+  // Validate code is not empty
+  const trimmedCode = (code || '').trim();
+  if (!trimmedCode) {
+    throw new Error('Code cannot be empty');
+  }
+
   const langConfig = languageMap[language.toLowerCase()];
   if (!langConfig) {
-    throw new Error(`Unsupported language: ${language}`);
+    throw new Error(`Unsupported language: ${language}. Supported: ${Object.keys(languageMap).join(', ')}`);
   }
 
   const requestData: JDoodleRequest = {
-    script: code,
+    script: trimmedCode,
     language: langConfig.language,
     versionIndex: langConfig.versionIndex,
     stdin: input || '',
   };
+
+  console.log('JDoodle request:', {
+    language: langConfig.language,
+    versionIndex: langConfig.versionIndex,
+    codeLength: trimmedCode.length,
+    codePreview: trimmedCode.substring(0, 50),
+    hasInput: !!input,
+  });
 
   try {
     const response = await axios.post('https://api.jdoodle.com/v1/execute', {
       ...requestData,
       clientId: JDoodleClientId,
       clientSecret: JDoodleClientSecret,
+    });
+
+    console.log('JDoodle response:', {
+      statusCode: response.data.statusCode,
+      outputLength: (response.data.output || '').length,
+      outputPreview: (response.data.output || '').substring(0, 100),
     });
 
     return {
