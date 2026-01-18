@@ -19,5 +19,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src/client'),
     },
   },
+  define: {
+    // Ensure Monaco Editor uses local files instead of CDN
+    'process.env': {},
+  },
 });
 
