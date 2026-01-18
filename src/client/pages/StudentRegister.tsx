@@ -5,13 +5,8 @@ import api from '../utils/api';
 export default function StudentRegister() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    htNo: '',
-    name: '',
-    branch: '',
-    section: '',
-    year: '',
-    contactNumber: '',
-    email: '',
+    fullName: '',
+    rollNumber: '',
     password: '',
     confirmPassword: '',
   });
@@ -19,7 +14,7 @@ export default function StudentRegister() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors([]);
   };
@@ -29,23 +24,20 @@ export default function StudentRegister() {
     setErrors([]);
     setLoading(true);
 
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setErrors(['Passwords do not match']);
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Trim all string fields before sending
-      const cleanedData = {
-        htNo: formData.htNo.trim(),
-        name: formData.name.trim(),
-        branch: formData.branch.trim(),
-        section: formData.section.trim(),
-        year: typeof formData.year === 'string' ? parseInt(formData.year, 10) : formData.year,
-        contactNumber: formData.contactNumber.trim(),
-        email: formData.email.trim(),
+      const response = await api.post('/auth/student/register', {
+        fullName: formData.fullName.trim(),
+        rollNumber: formData.rollNumber.trim().toUpperCase(),
         password: formData.password,
-        confirmPassword: formData.confirmPassword,
-      };
+      });
 
-      console.log('Submitting registration with:', cleanedData);
-
-      const response = await api.post('/auth/student/register', cleanedData);
       setSuccess(true);
       setTimeout(() => {
         navigate('/student/login');
@@ -55,14 +47,6 @@ export default function StudentRegister() {
       
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors.map((e: any) => e.msg || e.message));
-      } else if (error.response?.data?.details) {
-        // Show detailed mismatch information
-        const details = error.response.data.details;
-        setErrors([
-          error.response.data.error,
-          `Expected: Name="${details.expected.name}", Branch="${details.expected.branch}", Section="${details.expected.section}", Year=${details.expected.year}`,
-          `You entered: Name="${details.received.name}", Branch="${details.received.branch}", Section="${details.received.section}", Year=${details.received.year}`
-        ]);
       } else {
         setErrors([error.response?.data?.error || 'Registration failed. Please try again.']);
       }
@@ -78,10 +62,10 @@ export default function StudentRegister() {
           <div className="text-green-600 text-5xl mb-4">✓</div>
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Registration Successful!</h2>
           <p className="text-gray-600 mb-6">
-            Please check your email to verify your account before logging in.
+            Your account has been created. You can now sign in.
           </p>
           <Link to="/student/login" className="text-blue-600 hover:underline">
-            Go to Login →
+            Go to Sign In →
           </Link>
         </div>
       </div>
@@ -90,8 +74,8 @@ export default function StudentRegister() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Student Registration</h2>
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Create Account</h2>
 
         {errors.length > 0 && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
@@ -104,120 +88,68 @@ export default function StudentRegister() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Hall Ticket Number *</label>
-              <input
-                type="text"
-                name="htNo"
-                value={formData.htNo}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name *
+            </label>
+            <input
+              type="text"
+              id="fullName"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your full name"
+            />
+          </div>
 
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Name *</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label htmlFor="rollNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              Roll Number *
+            </label>
+            <input
+              type="text"
+              id="rollNumber"
+              name="rollNumber"
+              value={formData.rollNumber}
+              onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value.toUpperCase() })}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your roll number"
+            />
+          </div>
 
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Branch *</label>
-              <input
-                type="text"
-                name="branch"
-                value={formData.branch}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              Password *
+            </label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Create a password"
+            />
+          </div>
 
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Section *</label>
-              <input
-                type="text"
-                name="section"
-                value={formData.section}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Year *</label>
-              <select
-                name="year"
-                value={formData.year}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select Year</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Contact Number *</label>
-              <input
-                type="tel"
-                name="contactNumber"
-                value={formData.contactNumber}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Email (Gmail) *</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Password *</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                minLength={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Confirm Password *</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password *
+            </label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Confirm your password"
+            />
           </div>
 
           <button
@@ -225,19 +157,19 @@ export default function StudentRegister() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         <p className="mt-6 text-center text-gray-600">
-          Already registered?{' '}
+          Already have an account?{' '}
           <Link to="/student/login" className="text-blue-600 hover:underline font-semibold">
-            Login
+            Sign In
           </Link>
         </p>
 
         <div className="mt-4 text-center">
-          <Link to="/" className="text-gray-600 hover:text-gray-800">
+          <Link to="/" className="text-gray-600 hover:text-gray-800 text-sm">
             ← Back to Home
           </Link>
         </div>
@@ -245,4 +177,3 @@ export default function StudentRegister() {
     </div>
   );
 }
-

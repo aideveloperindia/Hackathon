@@ -26,14 +26,20 @@ export default function Home() {
             Participate in coding competitions and showcase your skills
           </p>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="flex flex-col md:flex-row gap-4 justify-center items-center max-w-2xl mx-auto">
             {!isAuthenticated ? (
               <>
                 <Link
-                  to="/student/login"
+                  to="/student/register"
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
                 >
                   Get Started
+                </Link>
+                <Link
+                  to="/student/login"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-8 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                >
+                  Sign In
                 </Link>
                 <Link
                   to="/admin/login"

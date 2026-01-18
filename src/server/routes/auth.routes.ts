@@ -10,24 +10,13 @@ import axios from 'axios';
 
 const router = express.Router();
 
-// Student Registration
+// Student Registration - Simplified: Full Name, Roll Number, Password
 router.post(
   '/student/register',
   [
-    body('htNo').trim().notEmpty().withMessage('Hall Ticket Number is required'),
-    body('name').trim().notEmpty().withMessage('Name is required'),
-    body('branch').trim().notEmpty().withMessage('Branch is required'),
-    body('section').trim().notEmpty().withMessage('Section is required'),
-    body('year').isInt({ min: 1, max: 4 }).withMessage('Year must be 1, 2, 3, or 4'),
-    body('contactNumber').trim().notEmpty().withMessage('Contact number is required'),
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('confirmPassword').custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Passwords do not match');
-      }
-      return true;
-    }),
+    body('fullName').trim().notEmpty().withMessage('Full name is required'),
+    body('rollNumber').trim().notEmpty().withMessage('Roll number is required'),
+    body('password').notEmpty().withMessage('Password is required'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -36,135 +25,91 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { htNo, name, branch, section, year, email, password } = req.body;
+      const { fullName, rollNumber, password } = req.body;
 
-      // Trim all inputs to remove whitespace
-      // Trim and normalize HT number
-      const trimmedHtNo = htNo?.trim().toUpperCase();
-      const trimmedName = name?.trim();
-      const trimmedBranch = branch?.trim().toUpperCase();
-      const trimmedSection = section?.trim().toUpperCase();
-      const trimmedYear = typeof year === 'string' ? parseInt(year, 10) : year;
+      // Trim and normalize inputs
+      const trimmedRollNumber = rollNumber?.trim().toUpperCase();
+      const trimmedFullName = fullName?.trim();
 
-      console.log('Registration attempt for HT:', trimmedHtNo);
+      console.log('Registration attempt for Roll Number:', trimmedRollNumber);
 
-      // Validate HT number format: 10 characters, "27" at positions 3-4 (0-indexed: 2-3)
-      if (!trimmedHtNo || trimmedHtNo.length !== 10) {
-        return res.status(400).json({ error: 'Hall Ticket Number must be exactly 10 characters long' });
+      if (!trimmedRollNumber || trimmedRollNumber.length === 0) {
+        return res.status(400).json({ error: 'Roll number is required' });
       }
 
-      if (trimmedHtNo.charAt(2) !== '2' || trimmedHtNo.charAt(3) !== '7') {
-        return res.status(400).json({ 
-          error: 'Invalid Hall Ticket Number. College code "27" must be at positions 3-4 (e.g., 22271A0660)' 
-        });
+      if (!trimmedFullName || trimmedFullName.length === 0) {
+        return res.status(400).json({ error: 'Full name is required' });
       }
 
-      console.log('✅ HT number format validated:', trimmedHtNo);
-
-      // Check if HT number exists in master_students (optional - for reference only)
-      // If not found, we can still allow registration since we're only checking format
+      // Check if roll number (HT No) exists in master_students or create new
       let masterStudent = await prisma.masterStudent.findUnique({
-        where: { htNo: trimmedHtNo },
+        where: { htNo: trimmedRollNumber },
       });
 
       if (!masterStudent) {
-        // HT number format is valid but not in master list - create master student record
-        console.log('⚠️ HT number not in master list, creating new master record.');
+        // Create new master student record
+        console.log('Creating new master student record for Roll Number:', trimmedRollNumber);
         masterStudent = await prisma.masterStudent.create({
           data: {
-            htNo: trimmedHtNo,
-            name: trimmedName,
-            branch: trimmedBranch,
-            section: trimmedSection,
-            year: trimmedYear,
+            htNo: trimmedRollNumber,
+            name: trimmedFullName,
+            branch: 'N/A', // Default values
+            section: 'N/A',
+            year: 1,
           },
         });
-        console.log('✅ Created master student record for HT:', trimmedHtNo);
+        console.log('✅ Created master student record');
       } else {
-        console.log('✅ Master record found for HT:', trimmedHtNo);
+        // Update name if different
+        if (masterStudent.name !== trimmedFullName) {
+          await prisma.masterStudent.update({
+            where: { id: masterStudent.id },
+            data: { name: trimmedFullName },
+          });
+        }
+        console.log('✅ Master record found');
       }
 
-      // Check if account already exists for this HT No
+      // Check if account already exists for this Roll Number
       const existingStudent = await prisma.student.findUnique({
         where: { masterStudentId: masterStudent.id },
       });
 
       if (existingStudent) {
-        return res.status(400).json({ error: 'An account already exists for this Hall Ticket Number' });
+        return res.status(400).json({ error: 'An account already exists for this roll number' });
       }
 
-      // Check if email is already used
-      const existingEmail = await prisma.student.findUnique({
-        where: { email },
-      });
-
-      if (existingEmail) {
-        return res.status(400).json({ error: 'Email is already registered' });
-      }
-
-      // Create student account
+      // Create student account with auto-generated email and auto-verified
       const passwordHash = await hashPassword(password);
-      const verifyToken = uuidv4();
-      const verifyExpiry = new Date();
-      verifyExpiry.setHours(verifyExpiry.getHours() + 24); // 24 hours expiry
+      const studentEmail = `${trimmedRollNumber.toLowerCase()}@jits.local`;
 
       const student = await prisma.student.create({
         data: {
           masterStudentId: masterStudent.id,
-          email,
+          email: studentEmail,
           passwordHash,
-          emailVerifyToken: verifyToken,
-          emailVerifyExpiry: verifyExpiry,
+          isEmailVerified: true, // Auto-verify, no email verification needed
         },
       });
 
-      // Generate verification URL for logging
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}`
-        : (process.env.FRONTEND_URL || 'http://localhost:5001');
-      const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}`;
-
-      // Send verification email (non-blocking - don't fail registration if email fails)
-      sendEmail(generateVerificationEmail(verifyToken, email))
-        .then(() => {
-          console.log('✅ Verification email sent successfully to:', email);
-          console.log('📧 Verification URL:', verifyUrl);
-        })
-        .catch((emailError: any) => {
-          console.error('⚠️ Failed to send verification email (registration still successful):', emailError.message);
-          if (emailError.code === 'EAUTH') {
-            console.error('   ❌ Gmail authentication failed. Check GMAIL_APP_PASSWORD in environment variables.');
-          }
-          console.log('📧 Verification URL (use this if email not received):', verifyUrl);
-        });
+      console.log('✅ Student account created successfully');
 
       res.status(201).json({
-        message: 'Registration successful. Please check your email to verify your account.',
+        message: 'Registration successful. You can now sign in.',
         studentId: student.id,
-        ...(process.env.NODE_ENV === 'development' && {
-          verificationUrl: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email?token=${verifyToken}`,
-        }),
       });
     } catch (error: any) {
       console.error('❌ Registration error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-      });
       
-      // Provide more specific error messages
       let errorMessage = 'Registration failed. Please try again.';
       
       if (error.code === 'P2002') {
         // Prisma unique constraint violation
-        if (error.meta?.target?.includes('email')) {
-          errorMessage = 'Email is already registered.';
-        } else if (error.meta?.target?.includes('masterStudentId')) {
-          errorMessage = 'An account already exists for this Hall Ticket Number.';
+        if (error.meta?.target?.includes('masterStudentId')) {
+          errorMessage = 'An account already exists for this roll number.';
+        } else if (error.meta?.target?.includes('email')) {
+          errorMessage = 'An account with this roll number already exists.';
         }
-      } else if (error.message?.includes('Email service not configured')) {
-        errorMessage = 'Email service is not configured. Please contact administrator.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -328,11 +273,11 @@ router.post('/student/login-ht', async (req: Request, res: Response) => {
   }
 });
 
-// Student Login (Original - with email/password)
+// Student Login - Simplified: Roll Number and Password
 router.post(
   '/student/login',
   [
-    body('htNo').trim().notEmpty().withMessage('Hall Ticket Number is required'),
+    body('rollNumber').trim().notEmpty().withMessage('Roll number is required'),
     body('password').notEmpty().withMessage('Password is required'),
   ],
   async (req: Request, res: Response) => {
@@ -342,42 +287,35 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { htNo, password } = req.body;
+      const { rollNumber, password } = req.body;
+      const trimmedRollNumber = rollNumber?.trim().toUpperCase();
 
-      // Find master student
+      // Find master student by roll number (HT No)
       const masterStudent = await prisma.masterStudent.findUnique({
-        where: { htNo },
+        where: { htNo: trimmedRollNumber },
         include: { student: true },
       });
 
       if (!masterStudent) {
-        console.log(`Login attempt failed: HT Number ${htNo} not found in master records`);
-        return res.status(401).json({ error: 'Hall Ticket Number not found. Please register first.' });
+        console.log(`Login attempt failed: Roll Number ${trimmedRollNumber} not found`);
+        return res.status(401).json({ error: 'Roll number not found. Please register first.' });
       }
 
       if (!masterStudent.student) {
-        console.log(`Login attempt failed: No account exists for HT ${htNo}`);
-        return res.status(401).json({ error: 'No account found for this Hall Ticket Number. Please register first.' });
+        console.log(`Login attempt failed: No account exists for Roll Number ${trimmedRollNumber}`);
+        return res.status(401).json({ error: 'No account found for this roll number. Please register first.' });
       }
 
       const student = masterStudent.student;
 
-      // Check email verification
-      if (!student.isEmailVerified) {
-        return res.status(403).json({
-          error: 'Please verify your email before logging in',
-          requiresVerification: true,
-        });
-      }
-
-      // Check password - CRITICAL: Must validate password before allowing login
+      // Check password - no email verification required
       const passwordMatch = await comparePassword(password, student.passwordHash);
       if (!passwordMatch) {
-        console.log(`Login attempt failed for HT ${htNo}: Password mismatch`);
+        console.log(`Login attempt failed for Roll Number ${trimmedRollNumber}: Password mismatch`);
         return res.status(401).json({ error: 'Invalid password. Please check your password and try again.' });
       }
       
-      console.log(`Login successful for HT ${htNo}`);
+      console.log(`Login successful for Roll Number ${trimmedRollNumber}`);
 
       // Generate token
       const token = generateToken({
@@ -398,7 +336,7 @@ router.post(
           branch: masterStudent.branch,
           section: masterStudent.section,
           year: masterStudent.year,
-          role: 'student', // CRITICAL: Include role in user object
+          role: 'student',
         },
       });
     } catch (error: any) {
