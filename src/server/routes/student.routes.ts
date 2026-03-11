@@ -174,6 +174,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       }
     }
 
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
     res.json({
       student: {
         id: student.id,

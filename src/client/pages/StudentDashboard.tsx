@@ -20,6 +20,18 @@ export default function StudentDashboard() {
     checkActiveEvent();
   }, []);
 
+  // Refetch when user returns to the tab (e.g. after solving questions in another tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData();
+        checkActiveEvent();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const fetchDashboardData = async () => {
     try {
       const response = await api.get('/student/dashboard');
@@ -170,13 +182,23 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4 items-center">
             <Link
               to="/leaderboard"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
             >
               View Leaderboard
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                fetchDashboardData();
+                checkActiveEvent();
+              }}
+              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+            >
+              Refresh Stats
+            </button>
             <Link
               to="/"
               className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"

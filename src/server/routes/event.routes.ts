@@ -382,6 +382,8 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
 
     const totalQuestions = await prisma.question.count({ where: { eventId: event.id } });
 
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
     res.json({
       event: {
         id: event.id,
