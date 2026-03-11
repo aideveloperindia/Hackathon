@@ -3,6 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
+function formatTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
 export default function StudentDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -159,35 +166,65 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          <div className="grid md:grid-cols-3 gap-6 mb-6">
+          {dashboardData?.stats?.currentEventTitle && (
+            <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-slate-600 mb-2">
+                {dashboardData.stats.currentEventStatus === 'ACTIVE' ? '📍 Live Event' : '📋 Last Event'}
+              </h3>
+              <p className="font-medium text-gray-800">{dashboardData.stats.currentEventTitle}</p>
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
             <div className="bg-blue-50 p-6 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Events Participated</h3>
               <p className="text-3xl font-bold text-blue-600">
-                {dashboardData?.stats?.eventsParticipated || 0}
+                {dashboardData?.stats?.eventsParticipated ?? 0}
               </p>
             </div>
             <div className="bg-green-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Questions Solved</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Questions Solved (Total)</h3>
               <p className="text-3xl font-bold text-green-600">
                 {dashboardData?.stats?.questionsSolved ?? 0}
               </p>
             </div>
+            <div className="bg-amber-50 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Questions Attempted</h3>
+              <p className="text-3xl font-bold text-amber-600">
+                {dashboardData?.stats?.questionsAttempted ?? 0}
+                {dashboardData?.stats?.totalQuestionsInEvent
+                  ? ` / ${dashboardData.stats.totalQuestionsInEvent}`
+                  : ''}
+              </p>
+            </div>
+            <div className="bg-indigo-50 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Score</h3>
+              <p className="text-3xl font-bold text-indigo-600">
+                {dashboardData?.stats?.totalScore ?? 0}
+              </p>
+            </div>
             <div className="bg-purple-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Leaderboard Position</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Time Taken</h3>
               <p className="text-3xl font-bold text-purple-600">
-                {dashboardData?.stats?.leaderboardPosition
+                {formatTime(dashboardData?.stats?.totalTimeTaken ?? 0)}
+              </p>
+            </div>
+            <div className="bg-rose-50 p-6 rounded-lg lg:col-span-2 xl:col-span-1">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Leaderboard Position</h3>
+              <p className="text-3xl font-bold text-rose-600">
+                {dashboardData?.stats?.leaderboardPosition != null
                   ? `#${dashboardData.stats.leaderboardPosition}`
-                  : 'N/A'}
+                  : '—'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-4 items-center">
             <Link
-              to="/leaderboard"
+              to={dashboardData?.stats?.currentEventId ? `/leaderboard/${dashboardData.stats.currentEventId}` : '/leaderboard'}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
             >
-              View Leaderboard
+              {dashboardData?.stats?.currentEventId ? 'View Current Leaderboard' : 'View Leaderboard'}
             </Link>
             <button
               type="button"

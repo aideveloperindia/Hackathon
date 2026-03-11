@@ -68,12 +68,84 @@ router.post(
   }
 );
 
+// Helper: compute leaderboard stats for an event (used for active or last ended)
+async function computeEventLeaderboard(event: any, studentId: string) {
+  const participants = await prisma.eventParticipant.findMany({
+    where: { eventId: event.id },
+    include: {
+      student: { include: { masterStudent: true } },
+    },
+  });
+
+  const participantScores = await Promise.all(
+    participants.map(async (participant) => {
+      const submissions = await prisma.submission.findMany({
+        where: {
+          eventId: event.id,
+          studentId: participant.studentId,
+        },
+      });
+
+      const acceptedSubmissions = submissions.filter(s => s.verdict === 'ACCEPTED');
+      const lockedSubmissions = acceptedSubmissions.filter((s: any) =>
+        s.executionResult && (s.executionResult as any).matchesCorrectAnswer === true
+      );
+
+      const totalScore = acceptedSubmissions.reduce((sum, s) => sum + s.score, 0);
+      const totalTimeTaken = acceptedSubmissions.reduce((sum, s) => sum + (s.timeTakenSeconds ?? 0), 0);
+      const lockedAnswersCount = lockedSubmissions.length;
+      const lockedTimeTaken = lockedSubmissions.reduce((sum: number, s: any) =>
+        sum + (s.timeTakenSeconds ?? 0), 0
+      );
+      const questionsAttempted = new Set(submissions.map((s: any) => s.questionId)).size;
+      const questionsSolved = new Set(acceptedSubmissions.map((s: any) => s.questionId)).size;
+
+      return {
+        studentId: participant.studentId,
+        totalScore,
+        timeTaken: totalTimeTaken,
+        lockedAnswersCount,
+        lockedTimeTaken,
+        questionsAttempted,
+        questionsSolved,
+      };
+    })
+  );
+
+  participantScores.sort((a, b) => {
+    if (a.lockedAnswersCount > 0 && b.lockedAnswersCount > 0) {
+      if (a.lockedAnswersCount === b.lockedAnswersCount) {
+        return a.lockedTimeTaken - b.lockedTimeTaken;
+      }
+      return b.lockedAnswersCount - a.lockedAnswersCount;
+    }
+    if (a.lockedAnswersCount > 0) return -1;
+    if (b.lockedAnswersCount > 0) return 1;
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    return a.timeTaken - b.timeTaken;
+  });
+
+  const studentEntry = participantScores.find((p) => p.studentId === studentId);
+  const position = participantScores.findIndex((p) => p.studentId === studentId);
+
+  return {
+    eventId: event.id,
+    eventTitle: event.title,
+    eventStatus: event.status,
+    totalQuestions: await prisma.question.count({ where: { eventId: event.id } }),
+    leaderboardPosition: position >= 0 ? position + 1 : null,
+    totalScore: studentEntry?.totalScore ?? 0,
+    totalTimeTaken: studentEntry?.timeTaken ?? 0,
+    questionsAttempted: studentEntry?.questionsAttempted ?? 0,
+    questionsSolved: studentEntry?.questionsSolved ?? 0,
+  };
+}
+
 // Get student dashboard data
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
     const studentId = req.user!.userId;
 
-    // Get student info
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: { masterStudent: true },
@@ -83,95 +155,68 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    // Get participation stats
     const eventCount = await prisma.eventParticipant.count({
       where: { studentId },
     });
 
-    // Get accepted submissions count (distinct questions)
     const solvedQuestions = await prisma.submission.findMany({
-      where: {
-        studentId,
-        verdict: 'ACCEPTED',
-      },
-      select: {
-        questionId: true,
-      },
+      where: { studentId, verdict: 'ACCEPTED' },
+      select: { questionId: true },
       distinct: ['questionId'],
     });
     const solvedCount = solvedQuestions.length;
 
-    // Get current/last event leaderboard position
+    // Use ACTIVE event first (if student joined); else last event the student participated in
     const activeEvent = await prisma.event.findFirst({
       where: { status: 'ACTIVE' },
-      include: {
-        participants: {
-          include: {
-            student: {
-              include: { masterStudent: true },
-            },
-          },
-        },
-      },
     });
-
-    let leaderboardPosition = null;
-    if (activeEvent) {
-      // Calculate scores for all participants
-      const participantScores = await Promise.all(
-        activeEvent.participants.map(async (participant) => {
-          const submissions = await prisma.submission.findMany({
-            where: {
-              eventId: activeEvent.id,
-              studentId: participant.studentId,
-            },
-          });
-
-          // Only count ACCEPTED submissions
-          const acceptedSubmissions = submissions.filter(s => s.verdict === 'ACCEPTED');
-          
-          // Check for locked answers
-          const lockedSubmissions = acceptedSubmissions.filter((s: any) => 
-            s.executionResult && (s.executionResult as any).matchesCorrectAnswer === true
-          );
-          
-          const totalScore = acceptedSubmissions.reduce((sum, s) => sum + s.score, 0);
-          const totalTimeTaken = acceptedSubmissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
-          const lockedAnswersCount = lockedSubmissions.length;
-          const lockedTimeTaken = lockedSubmissions.reduce((sum: number, s: any) => 
-            sum + (s.timeTakenSeconds || 0), 0
-          );
-
-          return {
-            studentId: participant.studentId,
-            totalScore,
-            timeTaken: totalTimeTaken,
-            lockedAnswersCount,
-            lockedTimeTaken,
-          };
+    const hasJoinedActive = activeEvent
+      ? await prisma.eventParticipant.findUnique({
+          where: {
+            eventId_studentId: { eventId: activeEvent.id, studentId },
+          },
         })
-      );
+      : null;
 
-      // Same ranking logic
-      participantScores.sort((a, b) => {
-        if (a.lockedAnswersCount > 0 && b.lockedAnswersCount > 0) {
-          if (a.lockedAnswersCount === b.lockedAnswersCount) {
-            return a.lockedTimeTaken - b.lockedTimeTaken;
-          }
-          return b.lockedAnswersCount - a.lockedAnswersCount;
-        }
-        if (a.lockedAnswersCount > 0) return -1;
-        if (b.lockedAnswersCount > 0) return 1;
-        if (b.totalScore !== a.totalScore) {
-          return b.totalScore - a.totalScore;
-        }
-        return a.timeTaken - b.timeTaken;
+    let targetEvent: { id: string; title: string; status: string } | null = null;
+    if (activeEvent && hasJoinedActive) {
+      targetEvent = activeEvent;
+    } else {
+      const lastParticipated = await prisma.eventParticipant.findFirst({
+        where: { studentId },
+        include: { event: true },
+        orderBy: { joinedAt: 'desc' },
       });
-
-      const position = participantScores.findIndex((p) => p.studentId === studentId);
-      if (position !== -1) {
-        leaderboardPosition = position + 1;
+      if (lastParticipated?.event) {
+        targetEvent = lastParticipated.event;
       }
+    }
+
+    let currentEventStats: {
+      eventId: string;
+      eventTitle: string;
+      eventStatus: string;
+      totalQuestions: number;
+      leaderboardPosition: number | null;
+      totalScore: number;
+      totalTimeTaken: number;
+      questionsAttempted: number;
+      questionsSolved: number;
+    } | null = null;
+
+    if (targetEvent) {
+      const stats = await computeEventLeaderboard(targetEvent, studentId);
+      currentEventStats = {
+        eventId: stats.eventId,
+        eventTitle: stats.eventTitle,
+        eventStatus: stats.eventStatus,
+        totalQuestions: stats.totalQuestions,
+        leaderboardPosition: stats.leaderboardPosition,
+        totalScore: stats.totalScore,
+        totalTimeTaken: stats.totalTimeTaken,
+        questionsAttempted: stats.questionsAttempted,
+        questionsSolved: stats.questionsSolved,
+      };
     }
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -190,7 +235,15 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       stats: {
         eventsParticipated: eventCount,
         questionsSolved: solvedCount,
-        leaderboardPosition,
+        leaderboardPosition: currentEventStats?.leaderboardPosition ?? null,
+        totalScore: currentEventStats?.totalScore ?? 0,
+        totalTimeTaken: currentEventStats?.totalTimeTaken ?? 0,
+        questionsAttempted: currentEventStats?.questionsAttempted ?? 0,
+        questionsSolvedInEvent: currentEventStats?.questionsSolved ?? 0,
+        totalQuestionsInEvent: currentEventStats?.totalQuestions ?? 0,
+        currentEventId: currentEventStats?.eventId ?? null,
+        currentEventTitle: currentEventStats?.eventTitle ?? null,
+        currentEventStatus: currentEventStats?.eventStatus ?? null,
       },
     });
   } catch (error: any) {

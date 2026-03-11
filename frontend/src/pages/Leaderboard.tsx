@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../utils/api';
 
+function formatTime(seconds: number): string {
+  if (seconds == null || seconds < 0) return '0s';
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 export default function Leaderboard() {
   const { eventId } = useParams<{ eventId?: string }>();
   const [leaderboard, setLeaderboard] = useState<any>(null);
@@ -66,17 +74,22 @@ export default function Leaderboard() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Past Events</h2>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">All Events</h2>
             <div className="space-y-4">
               {events.map((event) => (
                 <Link
                   key={event.id}
                   to={`/leaderboard/${event.id}`}
-                  className="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-200"
+                  className="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-200 border border-gray-200"
                 >
-                  <h3 className="font-semibold text-gray-800">{event.title}</h3>
-                  <p className="text-gray-600 text-sm">
-                    {event.language} | {new Date(event.startTime).toLocaleDateString()}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-800">{event.title}</h3>
+                    {event.status === 'ACTIVE' && (
+                      <span className="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded">LIVE</span>
+                    )}
+                  </div>
+                  <p className="text-gray-600 text-sm mt-1">
+                    {event.language} | {event.startTime ? new Date(event.startTime).toLocaleDateString() : '—'}
                   </p>
                 </Link>
               ))}
@@ -97,9 +110,14 @@ export default function Leaderboard() {
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">Leaderboard</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-3xl font-bold text-gray-800">Leaderboard</h2>
+              {leaderboard?.event?.status === 'ACTIVE' && (
+                <span className="px-2 py-1 text-sm font-semibold bg-green-100 text-green-800 rounded">LIVE</span>
+              )}
+            </div>
             {leaderboard?.event && (
-              <p className="text-gray-600">
+              <p className="text-gray-600 mt-1">
                 {leaderboard.event.title} - {leaderboard.event.language}
               </p>
             )}
@@ -115,6 +133,7 @@ export default function Leaderboard() {
                     <th className="border border-gray-300 px-4 py-3 text-left">HT No</th>
                     <th className="border border-gray-300 px-4 py-3 text-left">Branch/Year/Section</th>
                     <th className="border border-gray-300 px-4 py-3 text-center">Score</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center">Questions Solved</th>
                     <th className="border border-gray-300 px-4 py-3 text-center">Time Taken</th>
                   </tr>
                 </thead>
@@ -130,12 +149,17 @@ export default function Leaderboard() {
                       <td className="border border-gray-300 px-4 py-3 font-semibold">{entry.studentName}</td>
                       <td className="border border-gray-300 px-4 py-3">{entry.htNo}</td>
                       <td className="border border-gray-300 px-4 py-3">
-                        {entry.branch} - Y{entry.year} - {entry.section}
+                        {entry.branch ?? '—'} - Y{entry.year ?? '—'} - {entry.section ?? '—'}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center font-bold text-blue-600">
-                        {entry.totalScore}
+                        {entry.totalScore ?? 0}
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">{entry.timeTaken}s</td>
+                      <td className="border border-gray-300 px-4 py-3 text-center">
+                        {leaderboard?.event?.totalQuestions != null
+                          ? `${entry.questionsSolved ?? 0}/${leaderboard.event.totalQuestions}`
+                          : (entry.questionsSolved ?? 0)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-center">{formatTime(entry.timeTaken ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -400,20 +400,22 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
   }
 });
 
-// Get all events (public view)
+// Get all events for leaderboard (ACTIVE and ENDED - never DRAFT)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const events = await prisma.event.findMany({
       where: {
-        status: 'ENDED',
+        status: { in: ['ACTIVE', 'ENDED'] },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [
+        { status: 'asc' }, // ACTIVE first
+        { createdAt: 'desc' },
+      ],
       select: {
         id: true,
         title: true,
         language: true,
+        status: true,
         startTime: true,
         endTime: true,
         createdAt: true,

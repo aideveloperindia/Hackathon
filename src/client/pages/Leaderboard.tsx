@@ -74,17 +74,24 @@ export default function Leaderboard() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Past Events</h2>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">All Events</h2>
             <div className="space-y-4">
               {events.map((event) => (
                 <Link
                   key={event.id}
                   to={`/leaderboard/${event.id}`}
-                  className="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-200"
+                  className="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-200 border border-gray-200"
                 >
-                  <h3 className="font-semibold text-gray-800">{event.title}</h3>
-                  <p className="text-gray-600 text-sm">
-                    {event.language} | {new Date(event.startTime).toLocaleDateString()}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-800">{event.title}</h3>
+                    {event.status === 'ACTIVE' && (
+                      <span className="px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded">
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-600 text-sm mt-1">
+                    {event.language} | {event.startTime ? new Date(event.startTime).toLocaleDateString() : '—'}
                   </p>
                 </Link>
               ))}
@@ -105,9 +112,14 @@ export default function Leaderboard() {
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">Leaderboard</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-3xl font-bold text-gray-800">Leaderboard</h2>
+              {leaderboard?.event?.status === 'ACTIVE' && (
+                <span className="px-2 py-1 text-sm font-semibold bg-green-100 text-green-800 rounded">LIVE</span>
+              )}
+            </div>
             {leaderboard?.event && (
-              <p className="text-gray-600">
+              <p className="text-gray-600 mt-1">
                 {leaderboard.event.title} - {leaderboard.event.language}
               </p>
             )}
