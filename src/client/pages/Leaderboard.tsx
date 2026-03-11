@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../utils/api';
 
+function formatTime(seconds: number): string {
+  if (seconds == null || seconds < 0) return '0s';
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 export default function Leaderboard() {
   const { eventId } = useParams<{ eventId?: string }>();
   const [leaderboard, setLeaderboard] = useState<any>(null);
@@ -115,6 +123,7 @@ export default function Leaderboard() {
                     <th className="border border-gray-300 px-4 py-3 text-left">HT No</th>
                     <th className="border border-gray-300 px-4 py-3 text-left">Branch/Year/Section</th>
                     <th className="border border-gray-300 px-4 py-3 text-center">Score</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center">Questions Solved</th>
                     <th className="border border-gray-300 px-4 py-3 text-center">Time Taken</th>
                   </tr>
                 </thead>
@@ -130,12 +139,17 @@ export default function Leaderboard() {
                       <td className="border border-gray-300 px-4 py-3 font-semibold">{entry.studentName}</td>
                       <td className="border border-gray-300 px-4 py-3">{entry.htNo}</td>
                       <td className="border border-gray-300 px-4 py-3">
-                        {entry.branch} - Y{entry.year} - {entry.section}
+                        {entry.branch ?? '-'} - Y{entry.year ?? '-'} - {entry.section ?? '-'}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center font-bold text-blue-600">
-                        {entry.totalScore}
+                        {entry.totalScore ?? 0}
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">{entry.timeTaken}s</td>
+                      <td className="border border-gray-300 px-4 py-3 text-center">
+                        {leaderboard?.event?.totalQuestions != null
+                          ? `${entry.questionsSolved ?? 0}/${leaderboard.event.totalQuestions}`
+                          : (entry.questionsSolved ?? 0)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-center">{formatTime(entry.timeTaken ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>

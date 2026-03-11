@@ -366,7 +366,7 @@ export default function CodingEnvironment() {
           </div>
           <div className="text-right">
             <div className="text-sm text-gray-600 mb-1">
-              {selectedQuestion ? `Time Elapsed (Q${event.questions.findIndex((q: any) => q.id === selectedQuestion.id) + 1})` : 'Time Elapsed'}
+              {selectedQuestion ? `Time Elapsed (Q${Math.max(1, event.questions.findIndex((q: any) => q.id === selectedQuestion.id) + 1)})` : 'Time Elapsed'}
             </div>
             <div className={`text-2xl font-bold ${
               timerRunning ? 'text-blue-600' : 'text-green-600'
@@ -396,7 +396,7 @@ export default function CodingEnvironment() {
                       : 'border-gray-200 hover:border-blue-400'
                   }`}
                 >
-                  <div className="font-semibold text-gray-800">Question {idx + 1}: {q.title}</div>
+                  <div className="font-semibold text-gray-800">Question {idx + 1}: {q.title ?? 'Untitled'}</div>
                 </button>
               ))}
             </div>

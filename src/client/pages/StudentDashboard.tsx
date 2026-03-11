@@ -157,7 +157,7 @@ export default function StudentDashboard() {
             <div className="bg-green-50 p-6 rounded-lg">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Questions Solved</h3>
               <p className="text-3xl font-bold text-green-600">
-                {dashboardData?.stats?.questionsSolved || 0}
+                {dashboardData?.stats?.questionsSolved ?? 0}
               </p>
             </div>
             <div className="bg-purple-50 p-6 rounded-lg">

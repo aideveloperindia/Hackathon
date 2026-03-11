@@ -323,13 +323,16 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
         
         const totalScore = submissions.reduce((sum, s) => sum + s.score, 0);
         // Sum up all timeTakenSeconds from accepted submissions (time when each question was solved)
-        const totalTimeTaken = submissions.reduce((sum, s) => sum + (s.timeTakenSeconds || 0), 0);
+        const totalTimeTaken = submissions.reduce((sum, s) => sum + (s.timeTakenSeconds ?? 0), 0);
+        
+        // Count distinct questions solved (accepted submissions per question)
+        const questionsSolved = new Set(submissions.map((s: any) => s.questionId)).size;
         
         // Count how many questions have locked (correct) answers
         const lockedAnswersCount = lockedSubmissions.length;
         // Total time for locked answers only (for ranking)
         const lockedTimeTaken = lockedSubmissions.reduce((sum: number, s: any) => 
-          sum + (s.timeTakenSeconds || 0), 0
+          sum + (s.timeTakenSeconds ?? 0), 0
         );
 
         return {
@@ -341,6 +344,7 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
           year: participant.student.masterStudent.year,
           totalScore,
           timeTaken: totalTimeTaken, // Total time across all questions
+          questionsSolved, // Number of distinct questions solved
           lockedAnswersCount, // Number of questions with correct (locked) answers
           lockedTimeTaken, // Total time for locked answers (for ranking)
         };
@@ -376,12 +380,15 @@ router.get('/:eventId/leaderboard', async (req: Request, res: Response) => {
       ...p,
     }));
 
+    const totalQuestions = await prisma.question.count({ where: { eventId: event.id } });
+
     res.json({
       event: {
         id: event.id,
         title: event.title,
         language: event.language,
         status: event.status,
+        totalQuestions,
       },
       leaderboard,
     });
